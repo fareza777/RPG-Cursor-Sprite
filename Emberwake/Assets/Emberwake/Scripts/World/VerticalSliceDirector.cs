@@ -229,6 +229,9 @@ namespace Emberwake
             Paint(sr);
             visual.transform.localScale = Vector3.one * 1.05f;
             GroundShadow.Attach(p.transform, 1.0f);
+            // Kael carries the last Wick — a soft ember aura follows him.
+            AttachGlow(p.transform, new Vector2(0f, 0.1f), 1.9f,
+                new Color(1f, 0.72f, 0.36f, 0.32f), 18, 2.8f, 0.14f);
 
             // Controller BEFORE HeroVisual so Awake can bind (also re-binds in Start)
             p.AddComponent<Health>();
