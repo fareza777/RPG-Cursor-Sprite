@@ -517,13 +517,10 @@ namespace Emberwake
                     }
                     else
                     {
-                        SpawnBarkling(new Vector2(0f, 3f));
-                        SpawnEnemy("hollow_knight", new Vector2(-3f, 1f), 8f, 1.05f);
                         SetObjective("Kalahkan Barkling!");
-                        ShowToast("Barkling Nest — hati-hati slam!");
                         AudioDirector.Instance?.SetMusicMood("boss");
-                        AudioDirector.Instance?.PlayBoss();
                         QuestSystem.Instance?.Discover("main_barkling");
+                        StartBossFight();
                     }
                     QuestSystem.Instance?.AddProgress("side_explore");
                     break;
@@ -587,6 +584,33 @@ namespace Emberwake
             SpawnExitTrigger(new Vector2(0f, roomSize.y * 0.42f), () => LoadRoom(RoomId.Boss));
         }
 
+        void StartBossFight()
+        {
+            void Begin()
+            {
+                if (room != RoomId.Boss) return;
+                SpawnBarkling(new Vector2(0f, 3f));
+                SpawnEnemy("hollow_knight", new Vector2(-3f, 1f), 8f, 1.05f);
+                AudioDirector.Instance?.PlayBoss();
+                ShowToast("Barkling Nest — awas SLAM! Menghindar saat cincin merah muncul.");
+                FeelFeedback.Shake(0.25f, 0.3f);
+                SetPlayerFrozen(false);
+            }
+
+            if (DialogBox.Instance != null)
+            {
+                SetPlayerFrozen(true);
+                DialogBox.Instance.Play(new[]
+                {
+                    new DialogLine("Barkling", "…GRRAA. Daging kecil… membawa nyala curian."),
+                    new DialogLine("Kael", "Wick ini milik Millbrook. Menyingkir dari akarnya."),
+                    new DialogLine("Barkling", "Akar Ashdeep akan mencekik apimu sampai gelap."),
+                    new DialogLine("Sera", "Kael — dengar hentakannya. Menghindarlah saat tanah merah menyala!")
+                }, Begin);
+            }
+            else Begin();
+        }
+
         void OnBossDefeated()
         {
             if (bossDead) return;
@@ -594,9 +618,26 @@ namespace Emberwake
             GameManager.Instance?.WickRank.AddEssence(80);
             LevelingSystem.Instance?.AddXp(80);
             QuestSystem.Instance?.Complete("main_barkling");
-            ShowToast("Barkling tumbang!");
+            FeelFeedback.Shake(0.4f, 0.5f);
             SetObjective("Ke altar Wick");
-            SpawnExitTrigger(new Vector2(0f, roomSize.y * 0.42f), () => LoadRoom(RoomId.Altar));
+            if (DialogBox.Instance != null)
+            {
+                DialogBox.Instance.Play(new[]
+                {
+                    new DialogLine("Barkling", "…akar… padam… dingin…"),
+                    new DialogLine("Kael", "Tidur, penjaga tua. Hutan akan bernafas lagi."),
+                    new DialogLine("Sera", "Kau berhasil. Wick Hollowroot menyala — bawa pulang cahayanya.")
+                }, () =>
+                {
+                    ShowToast("Barkling tumbang! Altar Wick di utara.");
+                    SpawnExitTrigger(new Vector2(0f, roomSize.y * 0.42f), () => LoadRoom(RoomId.Altar));
+                });
+            }
+            else
+            {
+                ShowToast("Barkling tumbang!");
+                SpawnExitTrigger(new Vector2(0f, roomSize.y * 0.42f), () => LoadRoom(RoomId.Altar));
+            }
         }
 
         void OnAltarTouched()
