@@ -60,17 +60,42 @@ namespace Emberwake
             frame.color = Color.white;
             frame.raycastTarget = true;
 
+            // Warm frame behind the card (peeks out as a thin ember-gold border).
+            var borderGo = new GameObject("CardBorder", typeof(RectTransform), typeof(CanvasRenderer), typeof(Image));
+            borderGo.transform.SetParent(root.transform, false);
+            var border = borderGo.GetComponent<Image>();
+            border.sprite = UiArt.SoftPanel();
+            border.type = Image.Type.Sliced;
+            border.color = new Color(0.85f, 0.55f, 0.2f, 0.85f);
+            border.raycastTarget = false;
+            var bdr = border.rectTransform;
+            bdr.anchorMin = new Vector2(0.28f, 0.1f);
+            bdr.anchorMax = new Vector2(0.97f, 0.78f);
+            bdr.offsetMin = new Vector2(-5f, -5f);
+            bdr.offsetMax = new Vector2(5f, 5f);
+
             var cardGo = new GameObject("Card", typeof(RectTransform), typeof(CanvasRenderer), typeof(Image));
             cardGo.transform.SetParent(root.transform, false);
             var card = cardGo.GetComponent<Image>();
             card.sprite = UiArt.SoftPanel();
             card.type = Image.Type.Sliced;
-            card.color = new Color(0.08f, 0.06f, 0.12f, 0.92f);
+            card.color = new Color(0.08f, 0.06f, 0.12f, 0.94f);
             card.raycastTarget = false;
             var crt = card.rectTransform;
             crt.anchorMin = new Vector2(0.28f, 0.1f);
             crt.anchorMax = new Vector2(0.97f, 0.78f);
             crt.offsetMin = crt.offsetMax = Vector2.zero;
+
+            var portFrameGo = new GameObject("PortraitFrame", typeof(RectTransform), typeof(CanvasRenderer), typeof(Image));
+            portFrameGo.transform.SetParent(root.transform, false);
+            var portFrame = portFrameGo.GetComponent<Image>();
+            portFrame.sprite = UiArt.SoftPanel();
+            portFrame.type = Image.Type.Sliced;
+            portFrame.color = new Color(0.85f, 0.55f, 0.2f, 0.9f);
+            portFrame.raycastTarget = false;
+            var pfrt = portFrame.rectTransform;
+            pfrt.anchorMin = pfrt.anchorMax = new Vector2(0.16f, 0.42f);
+            pfrt.sizeDelta = new Vector2(272f, 272f);
 
             var portGo = new GameObject("Portrait", typeof(RectTransform), typeof(CanvasRenderer), typeof(Image));
             portGo.transform.SetParent(root.transform, false);
