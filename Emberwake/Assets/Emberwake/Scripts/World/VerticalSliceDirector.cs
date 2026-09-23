@@ -692,6 +692,7 @@ namespace Emberwake
             }
 
             if (!dungeon) ScatterFoliage();
+            ScatterPathDetail(dungeon);
 
             // Horizon painting only as thin north strip (not walkable floor)
             var bg = SliceArt.FloorBg(roomKey);
@@ -730,6 +731,26 @@ namespace Emberwake
                 float sc = Random.Range(0.9f, 1.45f);
                 go.transform.localScale = new Vector3((Random.value < 0.5f ? -sc : sc), sc, 1f);
                 sr.color = new Color(1f, 1f, 1f, flower ? 1f : Random.Range(0.8f, 1f));
+            }
+        }
+
+        void ScatterPathDetail(bool dungeon, int count = 18)
+        {
+            float hy = roomSize.y * 0.5f - 1f;
+            // Grass rooms: pebbles hug the central dirt path. Dungeons: scatter widely.
+            for (int i = 0; i < count; i++)
+            {
+                float x = dungeon ? Random.Range(-roomSize.x * 0.5f + 1f, roomSize.x * 0.5f - 1f)
+                                  : Random.Range(-1.9f, 1.9f);
+                float y = Random.Range(-hy, hy);
+                var go = new GameObject("SR_Pebble");
+                go.transform.position = (Vector3)(roomCenter + new Vector2(x, y));
+                var sr = go.AddComponent<SpriteRenderer>();
+                sr.sprite = SliceArt.Pebble(i);
+                Paint(sr);
+                sr.sortingOrder = -45;
+                float sc = Random.Range(0.7f, 1.3f);
+                go.transform.localScale = new Vector3((Random.value < 0.5f ? -sc : sc), sc, 1f);
             }
         }
 

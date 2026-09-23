@@ -393,6 +393,40 @@ namespace Emberwake
             return Sprite.Create(tex, new Rect(0, 0, size, size), new Vector2(0.5f, 0.15f), size);
         }
 
+        static Sprite[] pebbles;
+        public static Sprite Pebble(int i)
+        {
+            if (pebbles == null)
+                pebbles = new[] { MakePebble(1), MakePebble(2), MakePebble(3) };
+            return pebbles[Mathf.Abs(i) % pebbles.Length];
+        }
+
+        static Sprite MakePebble(int seed)
+        {
+            const int size = 12;
+            var tex = new Texture2D(size, size, TextureFormat.RGBA32, false);
+            tex.filterMode = FilterMode.Point;
+            var px = new Color[size * size];
+            for (int i = 0; i < px.Length; i++) px[i] = Color.clear;
+            Color baseCol = (seed % 2 == 0)
+                ? new Color(0.5f, 0.47f, 0.42f)
+                : new Color(0.58f, 0.5f, 0.4f);
+            Color hi = baseCol * 1.25f;
+            Color lo = baseCol * 0.7f;
+            float cx = size * 0.5f, cy = size * 0.45f;
+            float rx = 3.2f + (Hash(seed, 1, 2) & 1), ry = 2.2f + (Hash(seed, 3, 4) & 1);
+            for (int y = 0; y < size; y++)
+            for (int x = 0; x < size; x++)
+            {
+                float dx = (x - cx) / rx, dy = (y - cy) / ry;
+                if (dx * dx + dy * dy <= 1f)
+                    px[y * size + x] = (y - cy) > 0.3f ? hi : ((y - cy) < -0.6f ? lo : baseCol);
+            }
+            tex.SetPixels(px);
+            tex.Apply(false, false);
+            return Sprite.Create(tex, new Rect(0, 0, size, size), new Vector2(0.5f, 0.4f), size);
+        }
+
         static Sprite MakeFlower(int seed)
         {
             const int size = 16;
