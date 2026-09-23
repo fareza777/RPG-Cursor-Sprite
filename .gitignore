@@ -1,0 +1,13 @@
+AndroidSDK/
+Logs/
+*.apk
+Emberwake/.utmp/
+Emberwake/Library/
+Emberwake/Temp/
+Emberwake/Obj/
+Emberwake/Build/
+Emberwake/Builds/
+Emberwake/Logs/
+Emberwake/UserSettings/
+.vs/
+.gradle/

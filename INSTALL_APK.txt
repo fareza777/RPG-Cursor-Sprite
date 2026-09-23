@@ -1,0 +1,13 @@
+﻿# Install APK di HP
+
+File: Emberwake-Slice.apk (~58 MB)
+Package: com.emberwakestudio.emberwake
+Orientasi: Portrait
+
+Cara install:
+1. Copy APK ke HP (USB / Drive / Telegram ke diri sendiri)
+2. Di HP: Settings → izinkan install dari sumber tidak dikenal
+3. Buka file APK → Install
+4. Main sampai SLICE CLEAR
+
+Tes: stick, ATK/SPIN, dorong batu, boss Barkling, altar.
