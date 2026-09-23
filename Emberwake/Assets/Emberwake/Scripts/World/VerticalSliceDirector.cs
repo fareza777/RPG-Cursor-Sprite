@@ -309,7 +309,7 @@ namespace Emberwake
             cam.orthographic = true;
             cam.orthographicSize = CamOrtho;
             cam.clearFlags = CameraClearFlags.SolidColor;
-            cam.backgroundColor = new Color(0.18f, 0.42f, 0.24f);
+            cam.backgroundColor = new Color(0.05f, 0.07f, 0.08f);
             cam.allowHDR = false;
             cam.allowMSAA = false;
             cam.nearClipPlane = -10f;
@@ -816,6 +816,52 @@ namespace Emberwake
             sr.sprite = sprite;
             Paint(sr);
             sr.sortingOrder = order;
+            // Torches are the only props spawned at order 11 — give each a live ember glow.
+            if (order == 11)
+                AttachGlow(go.transform, new Vector2(0f, 0.45f / Mathf.Max(0.01f, scale)), 3.1f,
+                    new Color(1f, 0.55f, 0.18f, 0.7f), 12, 4.2f, 0.3f);
+        }
+
+        static Sprite glowSprite;
+        static Sprite GlowSprite()
+        {
+            if (glowSprite != null) return glowSprite;
+            int s = 96;
+            var tex = new Texture2D(s, s, TextureFormat.RGBA32, false);
+            tex.filterMode = FilterMode.Bilinear;
+            tex.wrapMode = TextureWrapMode.Clamp;
+            float c = (s - 1) * 0.5f;
+            var px = new Color[s * s];
+            for (int y = 0; y < s; y++)
+            for (int x = 0; x < s; x++)
+            {
+                float d = Vector2.Distance(new Vector2(x, y), new Vector2(c, c)) / c;
+                float a = Mathf.Clamp01(1f - d);
+                a = a * a * (1.1f - 0.3f * d); // soft, bright core
+                px[y * s + x] = new Color(1f, 1f, 1f, Mathf.Clamp01(a));
+            }
+            tex.SetPixels(px);
+            tex.Apply(false, true);
+            glowSprite = Sprite.Create(tex, new Rect(0, 0, s, s), new Vector2(0.5f, 0.5f), s);
+            return glowSprite;
+        }
+
+        /// <summary>Warm, flickering radial glow sprite — the game's signature ember light (unlit-safe).</summary>
+        static void AttachGlow(Transform parent, Vector2 localOffset, float worldRadius,
+            Color color, int order, float flickerSpeed = 3.4f, float flickerAmount = 0.24f)
+        {
+            var glow = new GameObject("SR_Glow");
+            glow.transform.SetParent(parent, false);
+            glow.transform.localPosition = new Vector3(localOffset.x, localOffset.y, 0f);
+            // Parent may be scaled; counter it so radius is in world units.
+            float inv = 1f / Mathf.Max(0.01f, parent.localScale.x);
+            glow.transform.localScale = Vector3.one * (worldRadius * 2f * inv);
+            var gsr = glow.AddComponent<SpriteRenderer>();
+            gsr.sprite = GlowSprite();
+            gsr.color = color;
+            gsr.sortingOrder = order;
+            if (spriteMat != null) gsr.sharedMaterial = spriteMat;
+            glow.AddComponent<GlowFlicker>().Init(gsr, color.a, flickerSpeed, flickerAmount);
         }
 
         void Wall(string name, Vector2 pos, Vector2 size)
@@ -955,6 +1001,8 @@ namespace Emberwake
             sr.color = new Color(1f, 0.92f, 0.35f, 1f);
             sr.sortingOrder = 16;
             g.transform.localScale = Vector3.one * 1.5f;
+            AttachGlow(g.transform, Vector2.zero, 2.2f,
+                new Color(1f, 0.85f, 0.4f, 0.6f), 15, 1.8f, 0.16f);
             var col = g.AddComponent<CircleCollider2D>();
             col.isTrigger = true;
             col.radius = 0.55f;
@@ -998,6 +1046,8 @@ namespace Emberwake
             sr.color = new Color(1f, 0.75f, 0.35f, 1f);
             sr.sortingOrder = 16;
             a.transform.localScale = Vector3.one * 1.9f;
+            AttachGlow(a.transform, new Vector2(0f, 0.2f), 4.6f,
+                new Color(1f, 0.68f, 0.28f, 0.62f), 15, 2.4f, 0.2f);
             var col = a.AddComponent<CircleCollider2D>();
             col.isTrigger = true;
             var t = a.AddComponent<SliceTrigger>();
