@@ -280,19 +280,50 @@ namespace Emberwake
 
             string[] tips =
             {
-                "1   D-pad kiri — gerak Kael (8 arah)",
-                "2   ATK kanan atas — tebas musuh",
-                "3   SPIN kanan bawah — serangan putar",
-                "4   Ikuti misi kuning di atas layar",
-                "5   Ketuk dialog untuk lanjut cerita"
+                "D-pad kiri — gerak Kael (8 arah)",
+                "ATK kanan atas — tebas musuh",
+                "SPIN kanan bawah — serangan putar",
+                "Ikuti misi kuning di atas layar",
+                "Ketuk dialog untuk lanjut cerita"
             };
+            Image Chip(string nm, Sprite spr, Color col, float y, float size)
+            {
+                var img = Panel(layer.transform, nm, col, false);
+                img.sprite = spr;
+                img.type = Image.Type.Simple;
+                var rt = img.rectTransform;
+                rt.anchorMin = rt.anchorMax = new Vector2(0.165f, y);
+                rt.sizeDelta = new Vector2(size, size);
+                return img;
+            }
             for (int i = 0; i < tips.Length; i++)
             {
+                float y = 0.68f - i * 0.075f;
                 var tip = Label(layer.transform, "Tip" + i, tips[i], 30,
-                    new Vector2(0.5f, 0.68f - i * 0.075f), new Color(0.96f, 0.93f, 0.86f));
+                    new Vector2(0.24f, y), new Color(0.96f, 0.93f, 0.86f));
                 tip.alignment = TextAnchor.MiddleLeft;
-                tip.rectTransform.sizeDelta = new Vector2(720f, 60f);
+                tip.rectTransform.pivot = new Vector2(0f, 0.5f);
+                tip.rectTransform.sizeDelta = new Vector2(650f, 60f);
                 tip.gameObject.AddComponent<Outline>().effectColor = new Color(0f, 0f, 0f, 0.8f);
+
+                switch (i)
+                {
+                    case 0:
+                        Chip("IcDpad", UiArt.JoystickRing(), new Color(1f, 0.85f, 0.35f, 0.95f), y, 54f);
+                        break;
+                    case 1:
+                        Chip("IcAtk", UiArt.WhiteCircle(), new Color(0.9f, 0.26f, 0.2f, 0.97f), y, 46f);
+                        break;
+                    case 2:
+                        Chip("IcSpin", UiArt.WhiteCircle(), new Color(0.58f, 0.3f, 0.86f, 0.97f), y, 46f);
+                        break;
+                    case 3:
+                        Chip("IcObj", UiArt.WhiteCircle(), new Color(1f, 0.82f, 0.32f, 0.97f), y, 34f);
+                        break;
+                    default:
+                        Chip("IcTalk", UiArt.SoftPanel(), new Color(0.95f, 0.92f, 0.84f, 0.95f), y, 44f).type = Image.Type.Sliced;
+                        break;
+                }
             }
 
             bool done = false;
