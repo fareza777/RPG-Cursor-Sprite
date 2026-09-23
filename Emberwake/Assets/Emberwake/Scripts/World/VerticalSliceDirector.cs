@@ -1143,6 +1143,15 @@ namespace Emberwake
             }
             else sr.sprite = art;
             Paint(sr);
+            // Subtle per-type tint so enemy kinds read at a glance.
+            sr.color = id switch
+            {
+                "ash_wisp" => new Color(0.7f, 0.9f, 1f),
+                "root_crawler" => new Color(0.75f, 0.95f, 0.7f),
+                "ember_moth" => new Color(1f, 0.8f, 0.55f),
+                "hollow_knight" => new Color(0.8f, 0.82f, 1f),
+                _ => Color.white
+            };
             sr.sortingOrder = 10;
             e.transform.localScale = Vector3.one * scale;
             var rb = e.AddComponent<Rigidbody2D>();
