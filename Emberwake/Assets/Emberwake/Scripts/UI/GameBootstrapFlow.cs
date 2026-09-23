@@ -53,6 +53,10 @@ namespace Emberwake
                         DialogBox.Instance?.ForceClose();
                         GameMenuHub.Instance?.Open();
                     }
+                    else if (a == "-emberwakeBoss")
+                    {
+                        VerticalSliceDirector.Instance?.QaShowBoss();
+                    }
                     else if (a.StartsWith("-emberwakeRoom") && a.Length > 14 &&
                              int.TryParse(a.Substring(14), out int roomIdx))
                     {

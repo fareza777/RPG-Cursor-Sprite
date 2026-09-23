@@ -166,6 +166,17 @@ namespace Emberwake
             SetPlayerFrozen(true);
         }
 
+        /// <summary>QA/screenshot helper: show the boss arena with the Barkling spawned (skips intro dialog).</summary>
+        public void QaShowBoss()
+        {
+            gameplayActive = true;
+            LoadRoom(RoomId.Boss);
+            DialogBox.Instance?.ForceClose();
+            SpawnBarkling(new Vector2(0f, 3f));
+            SpawnEnemy("hollow_knight", new Vector2(-3f, 1f), 8f, 1.05f);
+            SetPlayerFrozen(true);
+        }
+
         void SetPlayerFrozen(bool frozen)
         {
             if (player == null) return;
@@ -1263,10 +1274,10 @@ namespace Emberwake
             var e = new GameObject("SB_Barkling");
             e.transform.position = (Vector3)(roomCenter + localPos);
             var sr = e.AddComponent<SpriteRenderer>();
-            sr.sprite = SliceArt.Boss() != null ? SliceArt.Boss() : GeneratedArt.EnemyArt("barkling");
+            sr.sprite = GeneratedArt.EnemyArt("barkling");
             Paint(sr);
             sr.sortingOrder = 14;
-            e.transform.localScale = Vector3.one * 1.15f;
+            e.transform.localScale = Vector3.one * 1.7f;
             var rb = e.AddComponent<Rigidbody2D>();
             rb.gravityScale = 0f;
             rb.freezeRotation = true;

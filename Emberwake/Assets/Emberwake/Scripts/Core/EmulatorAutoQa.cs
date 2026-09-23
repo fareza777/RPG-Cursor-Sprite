@@ -46,11 +46,21 @@ namespace Emberwake
             return false;
         }
 
+        static bool HasRoomArg()
+        {
+            foreach (var a in System.Environment.GetCommandLineArgs())
+                if (a.StartsWith("-emberwakeRoom")) return true;
+            return false;
+        }
+
         void Update()
         {
             if (!Enabled) return;
             float dt = Time.unscaledDeltaTime;
-            if (HasArg("-emberwakeHub")) return; // hub opened by boot flow; stay idle
+            // Static screenshot hooks position the scene themselves — stay idle so the
+            // autopilot never teleports Kael (huge dt on the software renderer) or leaks
+            // enemies across rooms.
+            if (HasArg("-emberwakeHub") || HasArg("-emberwakeBoss") || HasRoomArg()) return;
 
             // 1) Auto-advance any open dialog.
             if (DialogBox.Instance != null && DialogBox.Instance.IsOpen)

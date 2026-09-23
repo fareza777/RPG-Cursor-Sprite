@@ -386,16 +386,56 @@ namespace Emberwake
             }
         }, FilterMode.Point));
 
-        static Sprite EnemyBoss(string key, Color col) => Get(key, () => Paint(80, (px, s) =>
+        // Barkling: a hunched bark/root golem — jagged wooden trunk, root spikes,
+        // two glowing amber eyes and a cracked ember maw. Reads clearly as a boss.
+        static Sprite EnemyBoss(string key, Color col) => Get(key, () => Paint(96, (px, s) =>
         {
-            float cx = s * 0.5f, cy = s * 0.45f;
+            float cx = s * 0.5f;
+            Color bark = Color.Lerp(new Color(0.30f, 0.34f, 0.22f), col, 0.25f);
+            Color barkDark = new Color(0.15f, 0.18f, 0.11f);
+            Color barkLite = new Color(0.46f, 0.52f, 0.33f);
+            Color eye = new Color(1f, 0.80f, 0.28f);
+            Color ember = new Color(1f, 0.44f, 0.12f);
             for (int y = 0; y < s; y++)
             for (int x = 0; x < s; x++)
             {
-                float dx = (x - cx) / (s * 0.4f), dy = (y - cy) / (s * 0.42f);
+                float nx = (x - cx) / (s * 0.5f);
+                float ny = (y / (float)s) * 2f - 1f;   // -1 bottom .. +1 top
                 Color c = Color.clear;
-                if (dx * dx + dy * dy < 1f) c = Color.Lerp(col, new Color(0.2f, 0.35f, 0.15f), dy * 0.5f + 0.5f);
-                if ((x - cx) * (x - cx) + (y - cy - 8) * (y - cy - 8) < 36) c = new Color(0.95f, 0.85f, 0.2f);
+
+                // Hunched trunk: domed shoulders on top, broad base
+                float shoulder = 0.60f + 0.10f * Mathf.Cos(nx * 3.14159f);
+                float halfWidth = Mathf.Lerp(0.80f, 0.52f, Mathf.InverseLerp(-0.8f, 0.72f, ny));
+                bool inBody = ny < 0.72f && ny > -0.78f && Mathf.Abs(nx) < halfWidth
+                              && (ny < 0.46f || Mathf.Abs(nx) < shoulder);
+                if (inBody)
+                {
+                    float groove = Mathf.Sin(nx * 9f + ny * 2f) * 0.5f + 0.5f;   // vertical bark grain
+                    c = Color.Lerp(barkDark, bark, groove);
+                    if (ny > 0.40f) c = Color.Lerp(c, barkLite, (ny - 0.40f) * 3f); // mossy crown
+                    c = Color.Lerp(c, barkDark, Mathf.Abs(nx) * 0.45f);            // side shade
+                }
+
+                // Root spikes fanning out at the base
+                if (ny <= -0.55f && ny > -0.98f)
+                {
+                    float spikes = Mathf.Abs(Mathf.Sin(nx * 6.5f));
+                    float depth = Mathf.InverseLerp(-0.55f, -0.98f, ny);
+                    if (spikes > depth && Mathf.Abs(nx) < 0.82f) c = barkDark;
+                }
+
+                // Glowing eyes
+                const float ey = 0.28f;
+                if (Mathf.Pow((nx + 0.24f) * 3.4f, 2) + Mathf.Pow((ny - ey) * 3.4f, 2) < 1f) c = eye;
+                if (Mathf.Pow((nx - 0.24f) * 3.4f, 2) + Mathf.Pow((ny - ey) * 3.4f, 2) < 1f) c = eye;
+
+                // Cracked ember maw
+                if (ny < 0.10f && ny > -0.10f && Mathf.Abs(nx) < 0.36f)
+                {
+                    float crack = Mathf.Abs(ny) * 12f + Mathf.Sin(nx * 16f) * 0.18f;
+                    if (crack < 0.55f) c = Color.Lerp(ember, eye, Mathf.Abs(nx) * 1.4f);
+                }
+
                 px[y * s + x] = c;
             }
         }, FilterMode.Point));
