@@ -425,7 +425,7 @@ namespace Emberwake
             BuildWalls();
             DecorateRoom(id);
             if (id == RoomId.Hub || id == RoomId.Boss || id == RoomId.Altar)
-                EmberParticles.Attach(transform, id == RoomId.Boss ? 28 : 16);
+                EmberParticles.Attach(transform, id == RoomId.Boss ? 34 : 24);
             // Lock camera so view stays mostly on floor
             float halfH = CamOrtho;
             float halfW = halfH * (9f / 16f);

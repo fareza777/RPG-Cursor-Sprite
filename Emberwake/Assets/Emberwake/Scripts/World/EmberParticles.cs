@@ -55,13 +55,13 @@ namespace Emberwake
                 e.transform.SetParent(transform, false);
                 var sr = e.AddComponent<SpriteRenderer>();
                 sr.sprite = soft;
-                sr.sortingOrder = 6;
+                sr.sortingOrder = 13; // above props/torch glow, below the hero (20)
                 embers[i] = new Ember
                 {
                     sr = sr,
-                    pos = new Vector3(Random.Range(-6f, 6f), Random.Range(-8f, 8f), 0f),
-                    speed = Random.Range(0.4f, 1.4f),
-                    size = Random.Range(0.15f, 0.4f),
+                    pos = new Vector3(Random.Range(-7f, 7f), Random.Range(-9f, 9f), 0f),
+                    speed = Random.Range(0.5f, 1.7f),
+                    size = Random.Range(0.22f, 0.6f),
                     life = Random.Range(0f, 1f)
                 };
                 e.transform.localPosition = embers[i].pos;
@@ -87,7 +87,7 @@ namespace Emberwake
                 {
                     e.sr.transform.localPosition = e.pos;
                     var c = e.sr.color;
-                    c.a = 0.25f + 0.55f * Mathf.Abs(Mathf.Sin(e.life * Mathf.PI));
+                    c.a = 0.35f + 0.6f * Mathf.Abs(Mathf.Sin(e.life * Mathf.PI));
                     e.sr.color = c;
                 }
                 embers[i] = e;
