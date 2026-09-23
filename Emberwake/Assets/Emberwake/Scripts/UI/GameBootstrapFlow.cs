@@ -34,9 +34,13 @@ namespace Emberwake
             // finished registering before we branch on QA mode. Otherwise the boot
             // flow can win the AfterSceneLoad race and ignore the QA fast-path.
             yield return null;
-            // QA: jump straight to the main menu for visual verification of menu UI.
+            // QA: jump straight to a specific screen for visual verification.
             foreach (var a in System.Environment.GetCommandLineArgs())
+            {
                 if (a == "-emberwakeMenu") { yield return MainMenu(); yield break; }
+                if (a == "-emberwakeCine") { yield return Cinematic(); yield break; }
+                if (a == "-emberwakeOnboard") { yield return Onboarding(); yield break; }
+            }
             if (EmulatorAutoQa.Enabled)
             {
                 // Fast path for visual QA — skip splash/cinematic straight into gameplay.
@@ -223,21 +227,39 @@ namespace Emberwake
             var veil = Panel(layer.transform, "Veil", new Color(0.02f, 0.03f, 0.05f, 0.55f), false);
             Stretch(veil.rectTransform);
 
-            Label(layer.transform, "Title", "CARA BERMAIN", 48,
-                new Vector2(0.5f, 0.86f), new Color(1f, 0.85f, 0.4f)).fontStyle = FontStyle.Bold;
+            // Framed card behind the tips for readability + structure.
+            var cardBorder = Panel(layer.transform, "CardBorder", new Color(0.82f, 0.53f, 0.2f, 0.85f), false);
+            var cbrt = cardBorder.rectTransform;
+            cbrt.anchorMin = new Vector2(0.1f, 0.28f);
+            cbrt.anchorMax = new Vector2(0.9f, 0.74f);
+            cbrt.offsetMin = cbrt.offsetMax = Vector2.zero;
+            var card = Panel(cardBorder.transform, "Card", new Color(0.06f, 0.05f, 0.09f, 0.9f), false);
+            var cardRt = card.rectTransform;
+            cardRt.anchorMin = Vector2.zero;
+            cardRt.anchorMax = Vector2.one;
+            cardRt.offsetMin = new Vector2(5f, 5f);
+            cardRt.offsetMax = new Vector2(-5f, -5f);
+
+            var title = Label(layer.transform, "Title", "CARA BERMAIN", 52,
+                new Vector2(0.5f, 0.82f), new Color(1f, 0.85f, 0.4f));
+            title.fontStyle = FontStyle.Bold;
+            title.gameObject.AddComponent<Outline>().effectColor = new Color(0.3f, 0.1f, 0f, 0.95f);
 
             string[] tips =
             {
-                "1  D-pad kiri — gerak Kael (8 arah)",
-                "2  ATK kanan atas — tebas musuh",
-                "3  SPIN kanan bawah — serangan putar",
-                "4  Ikuti misi kuning di atas layar",
-                "5  Ketuk dialog untuk lanjut cerita"
+                "1   D-pad kiri — gerak Kael (8 arah)",
+                "2   ATK kanan atas — tebas musuh",
+                "3   SPIN kanan bawah — serangan putar",
+                "4   Ikuti misi kuning di atas layar",
+                "5   Ketuk dialog untuk lanjut cerita"
             };
             for (int i = 0; i < tips.Length; i++)
             {
-                Label(layer.transform, "Tip" + i, tips[i], 30,
-                    new Vector2(0.5f, 0.72f - i * 0.08f), new Color(0.92f, 0.9f, 0.84f));
+                var tip = Label(layer.transform, "Tip" + i, tips[i], 30,
+                    new Vector2(0.5f, 0.68f - i * 0.075f), new Color(0.96f, 0.93f, 0.86f));
+                tip.alignment = TextAnchor.MiddleLeft;
+                tip.rectTransform.sizeDelta = new Vector2(720f, 60f);
+                tip.gameObject.AddComponent<Outline>().effectColor = new Color(0f, 0f, 0f, 0.8f);
             }
 
             bool done = false;
