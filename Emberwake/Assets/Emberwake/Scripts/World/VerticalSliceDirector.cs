@@ -732,6 +732,25 @@ namespace Emberwake
                 go.transform.localScale = new Vector3((Random.value < 0.5f ? -sc : sc), sc, 1f);
                 sr.color = new Color(1f, 1f, 1f, flower ? 1f : Random.Range(0.8f, 1f));
             }
+
+            // Darker bush treeline hugging the far left/right edges — frames the scene.
+            float edgeX = roomSize.x * 0.5f - 0.4f;
+            for (float y = -hy; y <= hy; y += Random.Range(2.2f, 3.4f))
+            {
+                for (int side = -1; side <= 1; side += 2)
+                {
+                    var b = new GameObject("SR_Bush");
+                    float jx = side * (edgeX - Random.Range(0f, 1.2f));
+                    b.transform.position = (Vector3)(roomCenter + new Vector2(jx, y + Random.Range(-0.6f, 0.6f)));
+                    var bsr = b.AddComponent<SpriteRenderer>();
+                    bsr.sprite = SliceArt.Tuft(Mathf.Abs((int)(y * 3f)) + side);
+                    Paint(bsr);
+                    bsr.sortingOrder = -38;
+                    float bs = Random.Range(2.4f, 3.4f);
+                    b.transform.localScale = new Vector3((side < 0 ? -bs : bs), bs, 1f);
+                    bsr.color = new Color(0.55f, 0.62f, 0.5f, 1f); // darker, cooler foliage
+                }
+            }
         }
 
         void ScatterPathDetail(bool dungeon, int count = 18)
