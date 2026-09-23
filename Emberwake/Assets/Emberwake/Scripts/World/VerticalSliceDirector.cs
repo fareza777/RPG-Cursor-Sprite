@@ -193,6 +193,12 @@ namespace Emberwake
             if (spriteMat != null) sr.sharedMaterial = spriteMat;
         }
 
+        void AutoSave()
+        {
+            var save = FindFirstObjectByType<SaveSystem>();
+            save?.SaveFromManagers(player);
+        }
+
         void HookProgressionFeedback()
         {
             if (LevelingSystem.Instance != null)
@@ -442,6 +448,7 @@ namespace Emberwake
         {
             room = id;
             ClearWorldProps();
+            if (gameplayActive) AutoSave();
             roomCenter = Vector2.zero;
             player.position = new Vector3(0f, -2.2f, 0f);
 
