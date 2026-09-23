@@ -11,6 +11,21 @@ namespace Emberwake
 
         public void Build(Transform canvas)
         {
+            // Subtle dusk color-grade over the world (drawn first, so only the world
+            // behind the overlay canvas is tinted — HUD/dialog stay crisp on top).
+            var duskGo = new GameObject("DuskGrade", typeof(RectTransform), typeof(CanvasRenderer), typeof(Image));
+            duskGo.transform.SetParent(canvas, false);
+            var drt = (RectTransform)duskGo.transform;
+            drt.anchorMin = Vector2.zero;
+            drt.anchorMax = Vector2.one;
+            drt.offsetMin = drt.offsetMax = Vector2.zero;
+            var dusk = duskGo.GetComponent<Image>();
+            dusk.sprite = UiArt.SoftPanel();
+            dusk.type = Image.Type.Sliced;
+            dusk.color = new Color(0.16f, 0.15f, 0.30f, 0.26f);
+            dusk.raycastTarget = false;
+            duskGo.transform.SetAsFirstSibling();
+
             var go = new GameObject("Vignette", typeof(RectTransform), typeof(CanvasRenderer), typeof(Image));
             go.transform.SetParent(canvas, false);
             var rt = (RectTransform)go.transform;
