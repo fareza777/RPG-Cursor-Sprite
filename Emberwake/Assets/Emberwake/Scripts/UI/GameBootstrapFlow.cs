@@ -47,11 +47,19 @@ namespace Emberwake
                 ClearLayer();
                 onStartGame?.Invoke();
                 foreach (var a in System.Environment.GetCommandLineArgs())
+                {
                     if (a == "-emberwakeHub")
                     {
                         DialogBox.Instance?.ForceClose();
                         GameMenuHub.Instance?.Open();
                     }
+                    else if (a.StartsWith("-emberwakeRoom") && a.Length > 14 &&
+                             int.TryParse(a.Substring(14), out int roomIdx))
+                    {
+                        DialogBox.Instance?.ForceClose();
+                        VerticalSliceDirector.Instance?.QaShowRoom(roomIdx);
+                    }
+                }
                 yield break;
             }
             yield return Splash();

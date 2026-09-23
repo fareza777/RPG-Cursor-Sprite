@@ -158,6 +158,14 @@ namespace Emberwake
 
         public void SetPlayerFrozenPublic(bool frozen) => SetPlayerFrozen(frozen);
 
+        /// <summary>QA/screenshot helper: jump straight to a room by index and show it.</summary>
+        public void QaShowRoom(int idx)
+        {
+            gameplayActive = true;
+            LoadRoom((RoomId)Mathf.Clamp(idx, 0, (int)RoomId.Altar));
+            SetPlayerFrozen(true);
+        }
+
         void SetPlayerFrozen(bool frozen)
         {
             if (player == null) return;

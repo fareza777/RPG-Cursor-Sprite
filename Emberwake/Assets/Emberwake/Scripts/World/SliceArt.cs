@@ -143,9 +143,37 @@ namespace Emberwake
             return Torch(0);
         }
 
+        static Sprite plateSprite;
         public static Sprite Plate()
         {
-            return GroundTile(3);
+            if (plateSprite != null) return plateSprite;
+            const int s = 32;
+            var tex = new Texture2D(s, s, TextureFormat.RGBA32, false);
+            tex.filterMode = FilterMode.Point;
+            var px = new Color[s * s];
+            Color rim = new Color(0.62f, 0.6f, 0.66f);
+            Color rimHi = new Color(0.78f, 0.78f, 0.85f);
+            Color fill = new Color(0.34f, 0.33f, 0.4f);
+            Color glow = new Color(0.95f, 0.72f, 0.35f);
+            float c = (s - 1) * 0.5f;
+            for (int y = 0; y < s; y++)
+            for (int x = 0; x < s; x++)
+            {
+                float dx = (x - c), dy = (y - c);
+                float d = Mathf.Max(Mathf.Abs(dx), Mathf.Abs(dy)); // square-ish
+                float rad = Mathf.Sqrt(dx * dx + dy * dy);
+                Color col;
+                if (d > 14.5f) col = Color.clear;
+                else if (d > 12f) col = (y > c) ? rimHi : rim;          // beveled outer rim
+                else if (d > 10f) col = fill * 0.8f;                    // groove
+                else col = fill;                                        // plate face
+                if (rad < 3.2f) col = Color.Lerp(fill, glow, 0.6f);    // center indicator
+                px[y * s + x] = col;
+            }
+            tex.SetPixels(px);
+            tex.Apply(false, false);
+            plateSprite = Sprite.Create(tex, new Rect(0, 0, s, s), new Vector2(0.5f, 0.5f), s);
+            return plateSprite;
         }
 
         public static Sprite Gloves()
