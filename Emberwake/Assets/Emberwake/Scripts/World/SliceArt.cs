@@ -350,20 +350,36 @@ namespace Emberwake
 
         static Sprite MakeStoneTile(int seed)
         {
-            Color baseCol = new Color(0.4f, 0.4f, 0.46f);
-            Color dark = new Color(0.28f, 0.28f, 0.34f);
-            Color light = new Color(0.55f, 0.55f, 0.6f);
+            // Tidy domed flagstones: mortar seams + a soft bevel that reads the same
+            // even when the tile is mirrored (tiles get random x/y flips when placed).
+            Color center = new Color(0.44f, 0.44f, 0.50f);
+            Color edge = new Color(0.30f, 0.30f, 0.36f);
+            Color mortar = new Color(0.21f, 0.21f, 0.27f);
             const int size = 32;
+            const int cell = 16;          // two flagstones per axis
             var tex = new Texture2D(size, size, TextureFormat.RGBA32, false);
             tex.filterMode = FilterMode.Point;
             var px = new Color[size * size];
             for (int y = 0; y < size; y++)
             for (int x = 0; x < size; x++)
             {
-                int h = Hash(x, y, seed + 90);
-                bool seam = (x % 8) == 0 || (y % 8) == 0;
-                float n = (h & 0xFF) / 255f;
-                Color c = seam ? dark : (n < 0.3f ? dark : (n > 0.75f ? light : baseCol));
+                int bx = x / cell, by = y / cell;
+                int cx = x % cell, cy = y % cell;
+                float ncx = (cx + 0.5f) / cell - 0.5f;
+                float ncy = (cy + 0.5f) / cell - 0.5f;
+                float e = Mathf.Max(Mathf.Abs(ncx), Mathf.Abs(ncy)) * 2f;   // 0 center .. 1 edge
+                int bh = Hash(bx, by, seed + 90);
+                float tone = ((bh & 0xFF) / 255f - 0.5f) * 0.08f;           // per-stone variation
+                Color c;
+                if (e > 0.9f) c = mortar;                                    // groove between stones
+                else c = Color.Lerp(center, edge, e / 0.9f) + new Color(tone, tone, tone);
+                if (e <= 0.9f)
+                {
+                    int h = Hash(x, y, seed + 5);
+                    float n = (h & 0xFF) / 255f;
+                    if (n > 0.95f) c = Color.Lerp(c, center, 0.4f);          // faint fleck
+                    else if (n < 0.05f) c = Color.Lerp(c, mortar, 0.35f);    // faint pit
+                }
                 px[y * size + x] = c;
             }
             tex.SetPixels(px);
