@@ -1168,43 +1168,213 @@ namespace Emberwake
         }
     }
 
+    /// <summary>
+    /// Barkling boss: roams (via EnemyChaser) then performs a telegraphed slam —
+    /// windup warning ring → shockwave + screenshake + AoE — and enrages at low HP.
+    /// </summary>
     public class BarklingBoss : MonoBehaviour
     {
+        enum St { Roam, Windup, Slam, Recover }
+
         System.Action onDead;
         Health health;
-        float slamTimer = 2.5f;
+        Transform player;
+        Health playerHp;
+        EnemyChaser chaser;
+        SpriteRenderer sr;
+        Color baseColor = Color.white;
+        GameObject ring;
+        St state = St.Roam;
+        float stateT;
+        float slamCd = 2.6f;
+        float windup = 0.75f;
+        float slamRadius = 2.5f;
         bool dead;
+        bool enraged;
+
+        static Sprite softCircle;
 
         public void Init(System.Action cb) => onDead = cb;
 
         void Awake()
         {
             health = GetComponent<Health>();
+            chaser = GetComponent<EnemyChaser>();
+            sr = GetComponent<SpriteRenderer>();
+            if (sr != null) baseColor = sr.color;
             if (health != null) health.OnDied += HandleDead;
+        }
+
+        void Start() => Resolve();
+
+        void Resolve()
+        {
+            var p = FindFirstObjectByType<PlayerController>();
+            if (p == null) return;
+            player = p.transform;
+            playerHp = p.GetComponent<Health>();
         }
 
         void Update()
         {
-            slamTimer -= Time.deltaTime;
-            if (slamTimer > 0f) return;
-            slamTimer = 2.8f;
-            // telegraph: flash + AoE damage near boss
-            var player = FindFirstObjectByType<PlayerController>();
-            if (player == null) return;
-            if (Vector2.Distance(transform.position, player.transform.position) < 1.6f)
+            if (dead) return;
+            if (player == null) { Resolve(); if (player == null) return; }
+            float dt = Time.deltaTime;
+            stateT += dt;
+
+            if (!enraged && health != null && health.Hp <= health.MaxHp * 0.4f)
             {
-                var h = player.GetComponent<Health>();
-                h?.TakeDamage(1f, transform.position);
+                enraged = true;
+                slamCd = 1.5f;
+                windup = 0.6f;
+                slamRadius = 3.0f;
+                baseColor = new Color(1f, 0.6f, 0.5f);
             }
-            var sr = GetComponent<SpriteRenderer>();
-            if (sr != null) sr.color = Color.white;
+
+            float dist = Vector2.Distance(transform.position, player.position);
+
+            switch (state)
+            {
+                case St.Roam:
+                    if (sr != null) sr.color = baseColor;
+                    if (stateT >= slamCd && dist < 3.6f)
+                    {
+                        state = St.Windup;
+                        stateT = 0f;
+                        if (chaser != null) chaser.enabled = false;
+                        SpawnRing();
+                        AudioDirector.Instance?.PlayUi();
+                    }
+                    break;
+
+                case St.Windup:
+                    // Freeze + pulse red to telegraph the incoming slam.
+                    var rb = GetComponent<Rigidbody2D>();
+                    if (rb != null) rb.linearVelocity = Vector2.zero;
+                    float k = Mathf.PingPong(stateT * 9f, 1f);
+                    if (sr != null) sr.color = Color.Lerp(baseColor, new Color(1f, 0.35f, 0.15f), k);
+                    if (ring != null)
+                    {
+                        float g = Mathf.Clamp01(stateT / windup);
+                        ring.transform.localScale = Vector3.one * (slamRadius * 2f * g);
+                        var rs = ring.GetComponent<SpriteRenderer>();
+                        if (rs != null) rs.color = new Color(1f, 0.35f, 0.12f, 0.15f + 0.4f * g);
+                    }
+                    if (stateT >= windup) DoSlam();
+                    break;
+
+                case St.Slam:
+                    if (stateT >= 0.14f) { state = St.Recover; stateT = 0f; }
+                    break;
+
+                case St.Recover:
+                    if (sr != null) sr.color = baseColor;
+                    if (stateT >= 0.55f)
+                    {
+                        state = St.Roam;
+                        stateT = 0f;
+                        if (chaser != null) chaser.enabled = true;
+                    }
+                    break;
+            }
+        }
+
+        void DoSlam()
+        {
+            state = St.Slam;
+            stateT = 0f;
+            if (ring != null) { Destroy(ring); ring = null; }
+            FeelFeedback.Shake(enraged ? 0.42f : 0.32f, 0.28f);
+            FeelFeedback.HitStop(0.05f);
+            AudioDirector.Instance?.PlayBoss();
+            SpawnShockwave(slamRadius);
+            if (playerHp != null && !playerHp.IsDead &&
+                Vector2.Distance(transform.position, player.position) <= slamRadius)
+                playerHp.TakeDamage(1f, transform.position);
+        }
+
+        void SpawnRing()
+        {
+            if (ring != null) Destroy(ring);
+            ring = new GameObject("SB_SlamTelegraph");
+            ring.transform.SetParent(transform, false);
+            ring.transform.localPosition = Vector3.zero;
+            var rs = ring.AddComponent<SpriteRenderer>();
+            rs.sprite = SoftCircle();
+            rs.color = new Color(1f, 0.35f, 0.12f, 0.2f);
+            rs.sortingOrder = 8;
+            ring.transform.localScale = Vector3.one * 0.4f;
+        }
+
+        void SpawnShockwave(float radius)
+        {
+            var go = new GameObject("SB_Shockwave");
+            go.transform.position = transform.position;
+            var s = go.AddComponent<SpriteRenderer>();
+            s.sprite = SoftCircle();
+            s.color = new Color(1f, 0.55f, 0.2f, 0.7f);
+            s.sortingOrder = 30;
+            go.AddComponent<ShockwaveFx>().Init(radius * 2.2f, 0.35f);
+        }
+
+        static Sprite SoftCircle()
+        {
+            if (softCircle != null) return softCircle;
+            int sz = 64;
+            var tex = new Texture2D(sz, sz, TextureFormat.RGBA32, false);
+            tex.filterMode = FilterMode.Bilinear;
+            float c = (sz - 1) * 0.5f;
+            var px = new Color[sz * sz];
+            for (int y = 0; y < sz; y++)
+            for (int x = 0; x < sz; x++)
+            {
+                float d = Vector2.Distance(new Vector2(x, y), new Vector2(c, c)) / c;
+                float a = Mathf.Clamp01(1f - d);
+                px[y * sz + x] = new Color(1f, 1f, 1f, a * a);
+            }
+            tex.SetPixels(px);
+            tex.Apply(false, true);
+            softCircle = Sprite.Create(tex, new Rect(0, 0, sz, sz), new Vector2(0.5f, 0.5f), sz);
+            return softCircle;
         }
 
         void HandleDead()
         {
             if (dead) return;
             dead = true;
+            if (ring != null) { Destroy(ring); ring = null; }
             onDead?.Invoke();
+        }
+    }
+
+    /// <summary>Expanding, fading shockwave ring for boss slams and impacts.</summary>
+    public class ShockwaveFx : MonoBehaviour
+    {
+        float maxScale;
+        float life;
+        float t;
+        SpriteRenderer sr;
+
+        public void Init(float scale, float duration)
+        {
+            maxScale = scale;
+            life = duration;
+            sr = GetComponent<SpriteRenderer>();
+            transform.localScale = Vector3.one * 0.2f;
+        }
+
+        void Update()
+        {
+            t += Time.deltaTime;
+            float u = life > 0f ? Mathf.Clamp01(t / life) : 1f;
+            transform.localScale = Vector3.one * Mathf.Lerp(0.2f, maxScale, u);
+            if (sr != null)
+            {
+                var c = sr.color;
+                c.a = (1f - u) * 0.7f;
+                sr.color = c;
+            }
+            if (t >= life) Destroy(gameObject);
         }
     }
 }
