@@ -124,6 +124,16 @@ namespace Emberwake
             srt.anchorMax = new Vector2(1f, 0.46f);
             srt.offsetMin = srt.offsetMax = Vector2.zero;
 
+            // Cinematic letterbox bars for a filmic prolog.
+            var barTop = Panel(layer.transform, "LetterTop", Color.black, false);
+            barTop.rectTransform.anchorMin = new Vector2(0f, 0.93f);
+            barTop.rectTransform.anchorMax = new Vector2(1f, 1f);
+            barTop.rectTransform.offsetMin = barTop.rectTransform.offsetMax = Vector2.zero;
+            var barBot = Panel(layer.transform, "LetterBot", Color.black, false);
+            barBot.rectTransform.anchorMin = new Vector2(0f, 0f);
+            barBot.rectTransform.anchorMax = new Vector2(1f, 0.07f);
+            barBot.rectTransform.offsetMin = barBot.rectTransform.offsetMax = Vector2.zero;
+
             var kicker = Label(layer.transform, "Kicker", "PROLOG", 28,
                 new Vector2(0.5f, 0.93f), new Color(1f, 0.86f, 0.55f));
             kicker.fontStyle = FontStyle.Bold;
