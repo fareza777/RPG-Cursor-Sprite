@@ -658,6 +658,7 @@ namespace Emberwake
         {
             var canvas = FindFirstObjectByType<Canvas>();
             if (canvas == null) return;
+
             var panel = new GameObject("ClearPanel", typeof(RectTransform), typeof(CanvasRenderer), typeof(Image));
             panel.transform.SetParent(canvas.transform, false);
             var rt = (RectTransform)panel.transform;
@@ -666,18 +667,88 @@ namespace Emberwake
             rt.offsetMin = rt.offsetMax = Vector2.zero;
             var img = panel.GetComponent<Image>();
             img.sprite = UiArt.SoftPanel();
-            img.color = new Color(0f, 0f, 0f, 0.78f);
+            img.color = new Color(0.02f, 0.02f, 0.05f, 0.86f);
             img.raycastTarget = true;
 
-            var go = new GameObject("ClearLabel", typeof(RectTransform), typeof(CanvasRenderer), typeof(Text));
-            go.transform.SetParent(panel.transform, false);
-            var lrt = (RectTransform)go.transform;
-            lrt.anchorMin = new Vector2(0.1f, 0.25f);
-            lrt.anchorMax = new Vector2(0.9f, 0.75f);
-            lrt.offsetMin = lrt.offsetMax = Vector2.zero;
-            var label = go.GetComponent<Text>();
-            UiArt.StyleLabel(label, 44, new Color(1f, 0.85f, 0.4f));
-            label.text = $"EMBERWAKE\nSLICE CLEAR\n{runTimer:0} detik\n\nTerima kasih playtest!";
+            // Ember-gold framed card.
+            var frame = ClearImage(panel.transform, new Vector2(0.5f, 0.5f), new Vector2(760f, 1000f),
+                new Color(0.85f, 0.55f, 0.2f, 0.95f));
+            var card = ClearImage(frame.transform, new Vector2(0.5f, 0.5f), new Vector2(740f, 980f),
+                new Color(0.08f, 0.06f, 0.11f, 0.98f));
+
+            ClearText(card.transform, new Vector2(0.5f, 0.9f), new Vector2(680f, 120f),
+                "EMBERWAKE", 74, new Color(1f, 0.8f, 0.32f), FontStyle.Bold);
+            ClearText(card.transform, new Vector2(0.5f, 0.8f), new Vector2(680f, 60f),
+                "— SLICE CLEAR —", 34, new Color(1f, 0.9f, 0.6f), FontStyle.Bold);
+
+            int lv = LevelingSystem.Instance != null ? LevelingSystem.Instance.Level : 1;
+            var wick = GameManager.Instance != null ? GameManager.Instance.WickRank : null;
+            var inv = GameManager.Instance != null ? GameManager.Instance.Inventory : null;
+            string stats =
+                $"Waktu bertahan   {runTimer:0} detik\n\n" +
+                $"Level Kael       {lv}\n\n" +
+                $"Wick Rank        {(wick != null ? wick.Rank : 1)}\n\n" +
+                $"Essence          {(wick != null ? wick.Essence : 0)}\n\n" +
+                $"Emas             {(inv != null ? inv.Gold : 0)}";
+            ClearText(card.transform, new Vector2(0.5f, 0.5f), new Vector2(600f, 420f),
+                stats, 30, new Color(0.94f, 0.92f, 0.86f), FontStyle.Bold);
+
+            ClearText(card.transform, new Vector2(0.5f, 0.2f), new Vector2(660f, 90f),
+                "Wick Millbrook menyala kembali.\nVirelia mengingat namanya.", 26,
+                new Color(0.8f, 0.78f, 0.7f), FontStyle.Normal);
+
+            // Restart button.
+            var btnFrame = ClearImage(card.transform, new Vector2(0.5f, 0.08f), new Vector2(400f, 104f),
+                new Color(1f, 0.85f, 0.45f, 1f));
+            var btnGo = ClearImage(btnFrame.transform, new Vector2(0.5f, 0.5f), new Vector2(388f, 92f),
+                new Color(0.82f, 0.42f, 0.1f, 1f));
+            btnGo.raycastTarget = true;
+            ClearText(btnGo.transform, new Vector2(0.5f, 0.5f), new Vector2(360f, 70f),
+                "MAIN LAGI", 36, Color.white, FontStyle.Bold);
+            var btn = btnGo.gameObject.AddComponent<Button>();
+            btn.onClick.AddListener(() =>
+            {
+                AudioDirector.Instance?.PlayStart();
+                Time.timeScale = 1f;
+                SaveSystem.ClearContinue();
+                var scene = UnityEngine.SceneManagement.SceneManager.GetActiveScene();
+                UnityEngine.SceneManagement.SceneManager.LoadScene(scene.buildIndex);
+            });
+        }
+
+        static Image ClearImage(Transform parent, Vector2 anchor, Vector2 size, Color color)
+        {
+            var go = new GameObject("CImg", typeof(RectTransform), typeof(CanvasRenderer), typeof(Image));
+            go.transform.SetParent(parent, false);
+            var rt = go.GetComponent<RectTransform>();
+            rt.anchorMin = rt.anchorMax = anchor;
+            rt.pivot = new Vector2(0.5f, 0.5f);
+            rt.sizeDelta = size;
+            rt.anchoredPosition = Vector2.zero;
+            var img = go.GetComponent<Image>();
+            img.sprite = UiArt.SoftPanel();
+            img.type = Image.Type.Sliced;
+            img.color = color;
+            img.raycastTarget = false;
+            return img;
+        }
+
+        static Text ClearText(Transform parent, Vector2 anchor, Vector2 size, string content,
+            int fontSize, Color color, FontStyle style)
+        {
+            var go = new GameObject("CTxt", typeof(RectTransform), typeof(CanvasRenderer), typeof(Text));
+            go.transform.SetParent(parent, false);
+            var rt = go.GetComponent<RectTransform>();
+            rt.anchorMin = rt.anchorMax = anchor;
+            rt.pivot = new Vector2(0.5f, 0.5f);
+            rt.sizeDelta = size;
+            rt.anchoredPosition = Vector2.zero;
+            var t = go.GetComponent<Text>();
+            UiArt.StyleLabel(t, fontSize, color, style);
+            t.alignment = TextAnchor.MiddleCenter;
+            t.text = content;
+            t.raycastTarget = false;
+            return t;
         }
 
         // ----- spawn helpers -----
