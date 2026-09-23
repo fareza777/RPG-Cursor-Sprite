@@ -98,6 +98,7 @@ namespace Emberwake
             SliceArt.LogStatusOnce();
             EnsureSpriteMaterial();
             BuildManagers();
+            HookProgressionFeedback();
             if (FindFirstObjectByType<FeelFeedback>() == null)
                 new GameObject("FeelFeedback").AddComponent<FeelFeedback>();
             if (AudioDirector.Instance == null)
@@ -190,6 +191,33 @@ namespace Emberwake
             if (sr == null) return;
             EnsureSpriteMaterial();
             if (spriteMat != null) sr.sharedMaterial = spriteMat;
+        }
+
+        void HookProgressionFeedback()
+        {
+            if (LevelingSystem.Instance != null)
+            {
+                LevelingSystem.Instance.OnLevelUp += lvl =>
+                {
+                    ShowToast($"LEVEL UP!  Lv {lvl}");
+                    FeelFeedback.Shake(0.12f, 0.16f);
+                    AudioDirector.Instance?.PlayQuest();
+                    if (player != null)
+                        CombatVfx.Burst(player.position, new Color(1f, 0.9f, 0.5f));
+                };
+            }
+            var w = GameManager.Instance?.WickRank;
+            if (w != null)
+            {
+                w.OnRankUp += rank =>
+                {
+                    ShowToast($"WICK RANK {rank}!  Nyala Kael menguat.");
+                    FeelFeedback.Shake(0.15f, 0.2f);
+                    AudioDirector.Instance?.PlayQuest();
+                    if (player != null)
+                        CombatVfx.Burst(player.position, new Color(1f, 0.7f, 0.3f));
+                };
+            }
         }
 
         void BuildManagers()
