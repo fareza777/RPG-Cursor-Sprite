@@ -230,8 +230,9 @@ namespace Emberwake
             visual.transform.localScale = Vector3.one * 1.05f;
             GroundShadow.Attach(p.transform, 1.0f);
             // Kael carries the last Wick — a soft ember aura follows him.
-            AttachGlow(p.transform, new Vector2(0f, 0.1f), 1.9f,
-                new Color(1f, 0.72f, 0.36f, 0.32f), 18, 2.8f, 0.14f);
+            if (!EmulatorAutoQa.Lite)
+                AttachGlow(p.transform, new Vector2(0f, 0.1f), 1.9f,
+                    new Color(1f, 0.72f, 0.36f, 0.32f), 18, 2.8f, 0.14f);
 
             // Controller BEFORE HeroVisual so Awake can bind (also re-binds in Start)
             p.AddComponent<Health>();
@@ -318,8 +319,10 @@ namespace Emberwake
             cam.nearClipPlane = -10f;
             cam.farClipPlane = 100f;
 
-            // Global 2D light so sprites aren't lit black by URP 2D
-            if (FindFirstObjectByType<Light2D>() == null)
+            // Global 2D light so sprites aren't lit black by URP 2D. Sprites are Unlit
+            // so this is cosmetically inert; skip it in QA-lite to drop the expensive
+            // per-frame 2D light pass on the headless software renderer.
+            if (!EmulatorAutoQa.Lite && FindFirstObjectByType<Light2D>() == null)
             {
                 var lightGo = new GameObject("SR_GlobalLight");
                 var light = lightGo.AddComponent<Light2D>();
@@ -427,7 +430,7 @@ namespace Emberwake
             BuildFloor(floorKey);
             BuildWalls();
             DecorateRoom(id);
-            if (id == RoomId.Hub || id == RoomId.Boss || id == RoomId.Altar)
+            if ((id == RoomId.Hub || id == RoomId.Boss || id == RoomId.Altar) && !EmulatorAutoQa.Lite)
                 EmberParticles.Attach(transform, id == RoomId.Boss ? 34 : 24);
             // Lock camera so view stays mostly on floor
             float halfH = CamOrtho;
@@ -691,8 +694,11 @@ namespace Emberwake
                 }
             }
 
-            if (!dungeon) ScatterFoliage();
-            ScatterPathDetail(dungeon);
+            if (!EmulatorAutoQa.Lite)
+            {
+                if (!dungeon) ScatterFoliage();
+                ScatterPathDetail(dungeon);
+            }
 
             // Horizon painting only as thin north strip (not walkable floor)
             var bg = SliceArt.FloorBg(roomKey);
@@ -885,7 +891,7 @@ namespace Emberwake
             Paint(sr);
             sr.sortingOrder = order;
             // Torches are the only props spawned at order 11 — give each a live ember glow.
-            if (order == 11)
+            if (order == 11 && !EmulatorAutoQa.Lite)
             {
                 float fy = 0.45f / Mathf.Max(0.01f, scale);
                 AttachGlow(go.transform, new Vector2(0f, fy), 3.1f,
@@ -1120,8 +1126,9 @@ namespace Emberwake
             sr.color = new Color(1f, 0.75f, 0.35f, 1f);
             sr.sortingOrder = 16;
             a.transform.localScale = Vector3.one * 1.9f;
-            AttachGlow(a.transform, new Vector2(0f, 0.2f), 4.6f,
-                new Color(1f, 0.68f, 0.28f, 0.62f), 15, 2.4f, 0.2f);
+            if (!EmulatorAutoQa.Lite)
+                AttachGlow(a.transform, new Vector2(0f, 0.2f), 4.6f,
+                    new Color(1f, 0.68f, 0.28f, 0.62f), 15, 2.4f, 0.2f);
             var col = a.AddComponent<CircleCollider2D>();
             col.isTrigger = true;
             var t = a.AddComponent<SliceTrigger>();

@@ -11,6 +11,10 @@ namespace Emberwake
     {
         public static bool Enabled { get; private set; }
 
+        /// <summary>QA-only: skip cosmetic scatter/glows so the headless software
+        /// renderer can produce many frames (for verifying controls/combat/rooms).</summary>
+        public static bool Lite { get; private set; }
+
         float dialogTapTimer;
         float attackTimer;
         float spinTimer;
@@ -27,6 +31,7 @@ namespace Emberwake
                        || HasArg("-emberwakeQa");
             if (!emu) return;
             Enabled = true;
+            Lite = HasArg("-emberwakeLite");
             var go = new GameObject("EmulatorAutoQa");
             DontDestroyOnLoad(go);
             go.AddComponent<EmulatorAutoQa>();
