@@ -62,6 +62,15 @@ namespace Emberwake
                     {
                         VerticalSliceDirector.Instance?.QaShowClear();
                     }
+                    else if (a.StartsWith("-emberwakeTab") && a.Length > 13)
+                    {
+                        string p = a.Substring(13).ToLowerInvariant();
+                        if (p == "quest") p = "quests";
+                        if (p == "bestiar") p = "bestiary";
+                        if (p == "karakter") p = "character";
+                        DialogBox.Instance?.ForceClose();
+                        GameMenuHub.Instance?.OpenTo(p);
+                    }
                     else if (a.StartsWith("-emberwakeRoom") && a.Length > 14 &&
                              int.TryParse(a.Substring(14), out int roomIdx))
                     {

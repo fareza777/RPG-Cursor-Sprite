@@ -82,10 +82,15 @@ namespace Emberwake
         });
         public static Sprite IconBook() => Glyph("i_book", (nx, ny) =>
         {
-            bool page = Mathf.Abs(nx) < 0.45f && Mathf.Abs(ny) < 0.55f;
-            bool spine = Mathf.Abs(nx) < 0.06f && Mathf.Abs(ny) < 0.55f;
-            if (!page) return Color.clear;
-            return spine ? new Color(0.55f, 0.35f, 0.15f) : new Color(0.92f, 0.88f, 0.75f);
+            // Closed tome: red cover, cream page fore-edge on the right, dark spine
+            // on the left, and a gold title band — reads clearly as a book.
+            bool cover = Mathf.Abs(nx) < 0.44f && Mathf.Abs(ny) < 0.54f;
+            if (!cover) return Color.clear;
+            if (nx > 0.30f) return new Color(0.93f, 0.89f, 0.76f);              // pages (fore-edge)
+            if (nx > 0.24f) return new Color(0.55f, 0.4f, 0.22f);              // edge shadow
+            if (nx < -0.34f) return new Color(0.36f, 0.1f, 0.09f);            // spine
+            if (Mathf.Abs(ny) < 0.07f && nx < 0.2f) return new Color(0.96f, 0.8f, 0.34f); // title band
+            return new Color(0.62f, 0.2f, 0.17f);                             // cover
         });
         public static Sprite IconSave() => Glyph("i_save", (nx, ny) =>
         {

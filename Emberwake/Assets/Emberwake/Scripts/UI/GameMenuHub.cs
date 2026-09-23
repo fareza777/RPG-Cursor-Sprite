@@ -122,6 +122,13 @@ namespace Emberwake
             ShowPage("home");
         }
 
+        /// <summary>QA/screenshot helper: open the hub straight to a specific tab.</summary>
+        public void OpenTo(string page)
+        {
+            Open();
+            if (!string.IsNullOrEmpty(page)) ShowPage(page);
+        }
+
         public void Close()
         {
             if (root == null) return;

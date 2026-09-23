@@ -53,6 +53,13 @@ namespace Emberwake
             return false;
         }
 
+        static bool HasArgPrefix(string prefix)
+        {
+            foreach (var a in System.Environment.GetCommandLineArgs())
+                if (a.StartsWith(prefix)) return true;
+            return false;
+        }
+
         void Update()
         {
             if (!Enabled) return;
@@ -61,7 +68,7 @@ namespace Emberwake
             // autopilot never teleports Kael (huge dt on the software renderer) or leaks
             // enemies across rooms.
             if (HasArg("-emberwakeHub") || HasArg("-emberwakeBoss")
-                || HasArg("-emberwakeClear") || HasRoomArg()) return;
+                || HasArg("-emberwakeClear") || HasRoomArg() || HasArgPrefix("-emberwakeTab")) return;
 
             // 1) Auto-advance any open dialog.
             if (DialogBox.Instance != null && DialogBox.Instance.IsOpen)
