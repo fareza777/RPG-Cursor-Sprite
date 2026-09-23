@@ -57,7 +57,7 @@ namespace Emberwake
             titleLabel.gameObject.AddComponent<Outline>().effectColor = new Color(0.3f, 0.1f, 0f, 0.9f);
 
             bodyLabel = MakeText(panel.transform, "Body", "", 26,
-                new Vector2(0.5f, 0.42f), Vector2.zero, new Vector2(820f, 720f),
+                new Vector2(0.5f, 0.52f), Vector2.zero, new Vector2(820f, 760f),
                 new Color(0.92f, 0.9f, 0.84f));
             bodyLabel.alignment = TextAnchor.UpperLeft;
 
@@ -165,7 +165,7 @@ namespace Emberwake
                 default:
                     titleLabel.text = "EMBERWAKE";
                     iconImage.sprite = GeneratedArt.IconWick();
-                    bodyLabel.text = "Pilih tab di bawah:\n\n• Karakter — status Kael\n• Level — XP & rank\n• Quest — main & side\n• Bestiar — musuh terungkap\n• Save — simpan perjalanan\n\nWick menunggu. Jangan biarkan padam.";
+                    bodyLabel.text = HomeText();
                     break;
             }
         }
@@ -176,6 +176,24 @@ namespace Emberwake
             var player = FindFirstObjectByType<PlayerController>();
             save?.SaveFromManagers(player != null ? player.transform : null);
             PortraitMobileHud.Instance?.ShowToast("Game tersimpan");
+        }
+
+        static string HomeText()
+        {
+            var s = GameManager.Instance?.Stats;
+            var w = GameManager.Instance?.WickRank;
+            var lv = LevelingSystem.Instance;
+            string status = s != null
+                ? $"Kael — Penjaga Wick\nHP {s.Hearts}/{s.MaxHearts}   ·   Lv {(lv != null ? lv.Level : 1)}   ·   Wick {(w != null ? w.Rank : 1)}\n\n"
+                : "";
+            return status +
+                   "Pilih tab di bawah:\n\n" +
+                   "• Karakter — status & kisah Kael\n" +
+                   "• Level — XP & Wick rank\n" +
+                   "• Quest — misi utama & sampingan\n" +
+                   "• Bestiar — musuh yang terungkap\n" +
+                   "• Save — simpan perjalanan\n\n" +
+                   "Wick menunggu. Jangan biarkan padam.";
         }
 
         static string CharacterText()
