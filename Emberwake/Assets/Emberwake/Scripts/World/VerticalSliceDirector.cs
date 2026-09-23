@@ -164,6 +164,7 @@ namespace Emberwake
             gameplayActive = true;
             LoadRoom((RoomId)Mathf.Clamp(idx, 0, (int)RoomId.Altar));
             SetPlayerFrozen(true);
+            PortraitMobileHud.Instance?.SetControlsVisible(true);
         }
 
         /// <summary>QA/screenshot helper: show the end-of-slice CLEAR overlay directly.</summary>
