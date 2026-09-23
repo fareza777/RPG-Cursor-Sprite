@@ -34,6 +34,9 @@ namespace Emberwake
             // finished registering before we branch on QA mode. Otherwise the boot
             // flow can win the AfterSceneLoad race and ignore the QA fast-path.
             yield return null;
+            // QA: jump straight to the main menu for visual verification of menu UI.
+            foreach (var a in System.Environment.GetCommandLineArgs())
+                if (a == "-emberwakeMenu") { yield return MainMenu(); yield break; }
             if (EmulatorAutoQa.Enabled)
             {
                 // Fast path for visual QA — skip splash/cinematic straight into gameplay.
@@ -277,14 +280,30 @@ namespace Emberwake
             ms.anchorMax = new Vector2(1f, 0.72f);
             ms.offsetMin = ms.offsetMax = Vector2.zero;
 
-            // Brand hero
-            var brand = Label(layer.transform, "Brand", "EMBERWAKE", 86,
-                new Vector2(0.5f, 0.72f), new Color(1f, 0.8f, 0.32f));
-            brand.fontStyle = FontStyle.Bold;
-            brand.rectTransform.sizeDelta = new Vector2(980f, 140f);
+            // Warm glow halo behind the title.
+            var brandGlow = new GameObject("BrandGlow", typeof(RectTransform), typeof(CanvasRenderer), typeof(Image));
+            brandGlow.transform.SetParent(layer.transform, false);
+            var bgi = brandGlow.GetComponent<Image>();
+            bgi.sprite = UiArt.WhiteCircle();
+            bgi.color = new Color(1f, 0.55f, 0.18f, 0.28f);
+            bgi.raycastTarget = false;
+            var bgrt = bgi.rectTransform;
+            bgrt.anchorMin = bgrt.anchorMax = new Vector2(0.5f, 0.72f);
+            bgrt.sizeDelta = new Vector2(900f, 420f);
 
-            Label(layer.transform, "Tag", "Ketika lentera terakhir padam,\ndunia lupa namanya sendiri.", 26,
-                new Vector2(0.5f, 0.62f), new Color(0.9f, 0.88f, 0.8f));
+            // Brand hero
+            var brand = Label(layer.transform, "Brand", "EMBERWAKE", 92,
+                new Vector2(0.5f, 0.72f), new Color(1f, 0.82f, 0.34f));
+            brand.fontStyle = FontStyle.Bold;
+            brand.rectTransform.sizeDelta = new Vector2(980f, 150f);
+            brand.gameObject.AddComponent<Outline>().effectColor = new Color(0.35f, 0.12f, 0f, 0.95f);
+            var brandShadow = brand.gameObject.AddComponent<Shadow>();
+            brandShadow.effectColor = new Color(0f, 0f, 0f, 0.7f);
+            brandShadow.effectDistance = new Vector2(3f, -4f);
+
+            var tag = Label(layer.transform, "Tag", "Ketika lentera terakhir padam,\ndunia lupa namanya sendiri.", 26,
+                new Vector2(0.5f, 0.62f), new Color(0.95f, 0.92f, 0.84f));
+            tag.gameObject.AddComponent<Outline>().effectColor = new Color(0f, 0f, 0f, 0.85f);
 
             string page = "home";
             bool play = false;
