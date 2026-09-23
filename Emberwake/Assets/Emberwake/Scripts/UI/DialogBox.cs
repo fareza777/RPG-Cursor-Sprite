@@ -32,6 +32,18 @@ namespace Emberwake
 
         public bool IsOpen => root != null && root.activeSelf;
 
+        /// <summary>Advance to the next line (used by tests / QA autopilot).</summary>
+        public void ForceAdvance() => tap = true;
+
+        /// <summary>Immediately close the dialog (QA screenshots).</summary>
+        public void ForceClose()
+        {
+            queue.Clear();
+            StopAllCoroutines();
+            if (root != null) root.SetActive(false);
+            onComplete = null;
+        }
+
         public void Build(Transform canvas)
         {
             Instance = this;

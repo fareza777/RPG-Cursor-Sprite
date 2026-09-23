@@ -30,10 +30,13 @@ namespace Emberwake
 
         IEnumerator RunFlow()
         {
+            // Wait one frame so RuntimeInitializeOnLoad hooks (EmulatorAutoQa) have
+            // finished registering before we branch on QA mode. Otherwise the boot
+            // flow can win the AfterSceneLoad race and ignore the QA fast-path.
+            yield return null;
             if (EmulatorAutoQa.Enabled)
             {
-                // Fast path for visual QA on emulator
-                yield return Splash();
+                // Fast path for visual QA — skip splash/cinematic straight into gameplay.
                 ClearLayer();
                 onStartGame?.Invoke();
                 yield break;
