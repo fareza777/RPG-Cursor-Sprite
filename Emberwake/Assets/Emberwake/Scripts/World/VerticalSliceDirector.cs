@@ -166,6 +166,17 @@ namespace Emberwake
             SetPlayerFrozen(true);
         }
 
+        /// <summary>QA/screenshot helper: show the end-of-slice CLEAR overlay directly.</summary>
+        public void QaShowClear()
+        {
+            gameplayActive = true;
+            LoadRoom(RoomId.Altar);
+            DialogBox.Instance?.ForceClose();
+            cleared = true;
+            SetObjective("SLICE CLEAR");
+            BuildClearOverlay();
+        }
+
         /// <summary>QA/screenshot helper: show the boss arena with the Barkling spawned (skips intro dialog).</summary>
         public void QaShowBoss()
         {

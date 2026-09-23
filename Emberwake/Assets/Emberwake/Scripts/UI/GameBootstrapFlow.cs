@@ -57,6 +57,10 @@ namespace Emberwake
                     {
                         VerticalSliceDirector.Instance?.QaShowBoss();
                     }
+                    else if (a == "-emberwakeClear")
+                    {
+                        VerticalSliceDirector.Instance?.QaShowClear();
+                    }
                     else if (a.StartsWith("-emberwakeRoom") && a.Length > 14 &&
                              int.TryParse(a.Substring(14), out int roomIdx))
                     {

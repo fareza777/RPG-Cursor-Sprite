@@ -60,7 +60,8 @@ namespace Emberwake
             // Static screenshot hooks position the scene themselves — stay idle so the
             // autopilot never teleports Kael (huge dt on the software renderer) or leaks
             // enemies across rooms.
-            if (HasArg("-emberwakeHub") || HasArg("-emberwakeBoss") || HasRoomArg()) return;
+            if (HasArg("-emberwakeHub") || HasArg("-emberwakeBoss")
+                || HasArg("-emberwakeClear") || HasRoomArg()) return;
 
             // 1) Auto-advance any open dialog.
             if (DialogBox.Instance != null && DialogBox.Instance.IsOpen)
