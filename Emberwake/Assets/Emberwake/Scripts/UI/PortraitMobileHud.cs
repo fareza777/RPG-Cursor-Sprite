@@ -282,7 +282,9 @@ namespace Emberwake
 
             rankLabel = CreateAnchoredText(strip.transform, "Rank", "Lv1 · Wick 1", 22,
                 TextAnchor.MiddleRight, new Vector2(1f, 0.55f), new Vector2(1f, 0.55f),
-                new Vector2(-16f, 0f), new Vector2(340f, 48f), new Color(1f, 0.86f, 0.4f));
+                new Vector2(-16f, 0f), new Vector2(320f, 48f), new Color(1f, 0.86f, 0.4f));
+            // Grow leftward from the right edge so the label never clips off-screen.
+            rankLabel.rectTransform.pivot = new Vector2(1f, 0.5f);
             rankLabel.fontStyle = FontStyle.Bold;
         }
 
