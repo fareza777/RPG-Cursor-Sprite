@@ -412,7 +412,7 @@ namespace Emberwake
                 {
                     float groove = Mathf.Sin(nx * 9f + ny * 2f) * 0.5f + 0.5f;   // vertical bark grain
                     c = Color.Lerp(barkDark, bark, groove);
-                    if (ny > 0.40f) c = Color.Lerp(c, barkLite, (ny - 0.40f) * 3f); // mossy crown
+                    if (ny > 0.58f) c = Color.Lerp(c, barkLite, (ny - 0.58f) * 3.5f); // thin mossy crown
                     c = Color.Lerp(c, barkDark, Mathf.Abs(nx) * 0.45f);            // side shade
                 }
 
@@ -424,15 +424,19 @@ namespace Emberwake
                     if (spikes > depth && Mathf.Abs(nx) < 0.82f) c = barkDark;
                 }
 
-                // Glowing eyes
-                const float ey = 0.28f;
-                if (Mathf.Pow((nx + 0.24f) * 3.4f, 2) + Mathf.Pow((ny - ey) * 3.4f, 2) < 1f) c = eye;
-                if (Mathf.Pow((nx - 0.24f) * 3.4f, 2) + Mathf.Pow((ny - ey) * 3.4f, 2) < 1f) c = eye;
+                // Sunken dark sockets, then small bright glowing eyes for a clear face
+                const float ey = 0.24f;
+                float eL = Mathf.Pow((nx + 0.22f) * 2.6f, 2) + Mathf.Pow((ny - ey) * 2.6f, 2);
+                float eR = Mathf.Pow((nx - 0.22f) * 2.6f, 2) + Mathf.Pow((ny - ey) * 2.6f, 2);
+                if (eL < 1f || eR < 1f) c = new Color(0.06f, 0.07f, 0.05f);         // socket
+                float pL = Mathf.Pow((nx + 0.22f) * 5.2f, 2) + Mathf.Pow((ny - ey) * 5.2f, 2);
+                float pR = Mathf.Pow((nx - 0.22f) * 5.2f, 2) + Mathf.Pow((ny - ey) * 5.2f, 2);
+                if (pL < 1f || pR < 1f) c = eye;                                    // glowing pupil
 
                 // Cracked ember maw
-                if (ny < 0.10f && ny > -0.10f && Mathf.Abs(nx) < 0.36f)
+                if (ny < 0.04f && ny > -0.14f && Mathf.Abs(nx) < 0.34f)
                 {
-                    float crack = Mathf.Abs(ny) * 12f + Mathf.Sin(nx * 16f) * 0.18f;
+                    float crack = Mathf.Abs(ny + 0.05f) * 13f + Mathf.Sin(nx * 16f) * 0.16f;
                     if (crack < 0.55f) c = Color.Lerp(ember, eye, Mathf.Abs(nx) * 1.4f);
                 }
 
