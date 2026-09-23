@@ -35,9 +35,15 @@ namespace Emberwake
                 new Color(0f, 0f, 0f, 0.72f), true);
             Stretch(dim.rectTransform);
 
+            // Ember-gold frame behind the panel (consistent UI language).
+            var frame = MakeImage(root.transform, "Frame", UiArt.SoftPanel(),
+                new Vector2(0.055f, 0.11f), new Vector2(0.945f, 0.91f), Vector2.zero, Vector2.zero,
+                new Color(0.82f, 0.53f, 0.2f, 0.9f), false);
+            frame.type = Image.Type.Sliced;
+
             var panel = MakeImage(root.transform, "Panel", UiArt.FramePanel(),
                 new Vector2(0.06f, 0.12f), new Vector2(0.94f, 0.9f), Vector2.zero, Vector2.zero,
-                new Color(0.1f, 0.09f, 0.08f, 0.98f), true);
+                new Color(0.09f, 0.07f, 0.11f, 0.99f), true);
             panel.type = Image.Type.Sliced;
 
             iconImage = MakeImage(panel.transform, "Icon", GeneratedArt.IconWick(),
@@ -48,6 +54,7 @@ namespace Emberwake
                 new Vector2(0.5f, 1f), new Vector2(0f, -160f), new Vector2(800f, 60f),
                 new Color(1f, 0.85f, 0.35f));
             titleLabel.fontStyle = FontStyle.Bold;
+            titleLabel.gameObject.AddComponent<Outline>().effectColor = new Color(0.3f, 0.1f, 0f, 0.9f);
 
             bodyLabel = MakeText(panel.transform, "Body", "", 26,
                 new Vector2(0.5f, 0.42f), Vector2.zero, new Vector2(820f, 720f),

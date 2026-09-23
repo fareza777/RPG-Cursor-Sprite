@@ -50,6 +50,7 @@ namespace Emberwake
         {
             if (!Enabled) return;
             float dt = Time.unscaledDeltaTime;
+            if (HasArg("-emberwakeHub")) return; // hub opened by boot flow; stay idle
 
             // 1) Auto-advance any open dialog.
             if (DialogBox.Instance != null && DialogBox.Instance.IsOpen)

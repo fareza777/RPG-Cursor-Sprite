@@ -46,6 +46,12 @@ namespace Emberwake
                 // Fast path for visual QA — skip splash/cinematic straight into gameplay.
                 ClearLayer();
                 onStartGame?.Invoke();
+                foreach (var a in System.Environment.GetCommandLineArgs())
+                    if (a == "-emberwakeHub")
+                    {
+                        DialogBox.Instance?.ForceClose();
+                        GameMenuHub.Instance?.Open();
+                    }
                 yield break;
             }
             yield return Splash();
