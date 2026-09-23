@@ -15,6 +15,9 @@ namespace Emberwake
         Text titleLabel;
         Text bodyLabel;
         Image iconImage;
+        Image xpBarBg;
+        Image xpFill;
+        Text xpBarLabel;
         string page = "home";
         bool open;
 
@@ -60,6 +63,26 @@ namespace Emberwake
                 new Vector2(0.5f, 0.52f), Vector2.zero, new Vector2(820f, 760f),
                 new Color(0.92f, 0.9f, 0.84f));
             bodyLabel.alignment = TextAnchor.UpperLeft;
+
+            // Graphical XP meter (shown only on the Level page).
+            xpBarBg = MakeImage(panel.transform, "XpBarBg", UiArt.SoftPanel(),
+                new Vector2(0.5f, 0.72f), new Vector2(0.5f, 0.72f), Vector2.zero, new Vector2(640f, 34f),
+                new Color(0.14f, 0.12f, 0.18f, 1f), false);
+            xpBarBg.type = Image.Type.Sliced;
+            xpBarBg.preserveAspect = false;
+            xpFill = MakeImage(xpBarBg.transform, "XpFill", UiArt.WhiteQuad(),
+                Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero,
+                new Color(1f, 0.82f, 0.3f, 1f), false);
+            xpFill.preserveAspect = false;
+            xpFill.type = Image.Type.Filled;
+            xpFill.fillMethod = Image.FillMethod.Horizontal;
+            xpFill.fillOrigin = (int)Image.OriginHorizontal.Left;
+            xpFill.fillAmount = 0f;
+            xpFill.rectTransform.offsetMin = new Vector2(4f, 4f);
+            xpFill.rectTransform.offsetMax = new Vector2(-4f, -4f);
+            xpBarLabel = MakeText(xpBarBg.transform, "XpBarTxt", "", 20,
+                new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(600f, 34f), Color.white);
+            xpBarLabel.fontStyle = FontStyle.Bold;
 
             float y = 0.08f;
             MakeNav(panel.transform, "Karakter", GeneratedArt.IconSword(), () => ShowPage("character"), new Vector2(0.18f, y));
@@ -141,6 +164,14 @@ namespace Emberwake
         void ShowPage(string id)
         {
             page = id;
+            bool showXp = id == "level";
+            if (xpBarBg != null) xpBarBg.gameObject.SetActive(showXp);
+            if (showXp)
+            {
+                var lv = LevelingSystem.Instance;
+                if (xpFill != null) xpFill.fillAmount = lv != null ? Mathf.Clamp01(lv.XpNormalized) : 0f;
+                if (xpBarLabel != null) xpBarLabel.text = lv != null ? $"{lv.Xp} / {lv.XpToNext} XP" : "";
+            }
             switch (id)
             {
                 case "character":
@@ -223,9 +254,8 @@ namespace Emberwake
             var lv = LevelingSystem.Instance;
             var w = GameManager.Instance?.WickRank;
             if (lv == null) return "Leveling belum siap.";
-            int bar = Mathf.RoundToInt(lv.XpNormalized * 12f);
-            string meter = new string('█', bar) + new string('░', 12 - bar);
-            return $"Level {lv.Level}\nXP  {lv.Xp}/{lv.XpToNext}\n[{meter}]\n\n" +
+            // XP meter is drawn as a graphical bar (xpBarBg); leave blank lines for it.
+            return $"Level {lv.Level}\n\n\n\n" +
                    $"Wick Rank {w?.Rank ?? 1} · Essence ke next: {w?.EssenceToNext ?? 0}\n\n" +
                    "Setiap 3 level: +1 Heart Container\nSetiap level: +Sword & Stamina\n\nBunuh musuh, selesaikan quest,\nnyalakan Wick — naik level.";
         }
