@@ -688,6 +688,8 @@ namespace Emberwake
                 }
             }
 
+            if (!dungeon) ScatterFoliage();
+
             // Horizon painting only as thin north strip (not walkable floor)
             var bg = SliceArt.FloorBg(roomKey);
             if (bg != null)
@@ -702,6 +704,29 @@ namespace Emberwake
                 float hu = bg.bounds.size.y;
                 if (wu > 0.01f && hu > 0.01f)
                     far.transform.localScale = new Vector3(roomSize.x * 1.5f / wu, 3.2f / hu, 1f);
+            }
+        }
+
+        void ScatterFoliage(int count = 42)
+        {
+            float hx = roomSize.x * 0.5f - 0.8f;
+            float hy = roomSize.y * 0.5f - 1f;
+            for (int i = 0; i < count; i++)
+            {
+                // Keep foliage off the central dirt path (|x| < 2.4).
+                float x = Random.Range(2.4f, hx);
+                if (Random.value < 0.5f) x = -x;
+                float y = Random.Range(-hy, hy);
+                bool flower = Random.value < 0.28f;
+                var go = new GameObject("SR_Foliage");
+                go.transform.position = (Vector3)(roomCenter + new Vector2(x, y));
+                var sr = go.AddComponent<SpriteRenderer>();
+                sr.sprite = flower ? SliceArt.Flower(i) : SliceArt.Tuft(i);
+                Paint(sr);
+                sr.sortingOrder = -40;
+                float sc = Random.Range(0.9f, 1.45f);
+                go.transform.localScale = new Vector3((Random.value < 0.5f ? -sc : sc), sc, 1f);
+                sr.color = new Color(1f, 1f, 1f, flower ? 1f : Random.Range(0.8f, 1f));
             }
         }
 

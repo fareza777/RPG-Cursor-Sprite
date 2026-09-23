@@ -343,6 +343,85 @@ namespace Emberwake
             return Sprite.Create(tex, new Rect(0, 0, size, size), new Vector2(0.5f, 0.5f), size);
         }
 
+        static Sprite[] tufts;
+        static Sprite[] flowers;
+
+        public static Sprite Tuft(int i)
+        {
+            if (tufts == null)
+                tufts = new[] { MakeTuft(1), MakeTuft(2), MakeTuft(3), MakeTuft(4) };
+            return tufts[Mathf.Abs(i) % tufts.Length];
+        }
+
+        public static Sprite Flower(int i)
+        {
+            if (flowers == null)
+                flowers = new[] { MakeFlower(1), MakeFlower(2), MakeFlower(3) };
+            return flowers[Mathf.Abs(i) % flowers.Length];
+        }
+
+        static Sprite MakeTuft(int seed)
+        {
+            const int size = 16;
+            var tex = new Texture2D(size, size, TextureFormat.RGBA32, false);
+            tex.filterMode = FilterMode.Point;
+            var px = new Color[size * size];
+            for (int i = 0; i < px.Length; i++) px[i] = Color.clear;
+            Color[] shades =
+            {
+                new Color(0.24f, 0.5f, 0.2f), new Color(0.32f, 0.62f, 0.26f),
+                new Color(0.4f, 0.7f, 0.3f)
+            };
+            int blades = 4 + (Hash(seed, 7, 3) & 3);
+            for (int b = 0; b < blades; b++)
+            {
+                int h = Hash(b, seed, seed + 5);
+                int bx = 3 + (Mathf.Abs(h) % (size - 6));
+                int height = 5 + (Mathf.Abs(h >> 4) % 7);
+                float lean = ((h >> 8) & 3) - 1.5f;
+                var col = shades[Mathf.Abs(h >> 12) % shades.Length];
+                for (int yy = 0; yy < height; yy++)
+                {
+                    int cx = Mathf.Clamp(bx + Mathf.RoundToInt(lean * yy / height), 0, size - 1);
+                    int y = yy; // grow from bottom
+                    px[y * size + cx] = col;
+                    if (yy < height - 1 && cx + 1 < size) px[y * size + cx + 1] = col * 0.9f;
+                }
+            }
+            tex.SetPixels(px);
+            tex.Apply(false, false);
+            return Sprite.Create(tex, new Rect(0, 0, size, size), new Vector2(0.5f, 0.15f), size);
+        }
+
+        static Sprite MakeFlower(int seed)
+        {
+            const int size = 16;
+            var tex = new Texture2D(size, size, TextureFormat.RGBA32, false);
+            tex.filterMode = FilterMode.Point;
+            var px = new Color[size * size];
+            for (int i = 0; i < px.Length; i++) px[i] = Color.clear;
+            Color stem = new Color(0.28f, 0.55f, 0.24f);
+            Color[] petalSet =
+            {
+                new Color(1f, 0.85f, 0.35f), new Color(0.95f, 0.5f, 0.55f),
+                new Color(0.75f, 0.7f, 1f), new Color(1f, 0.95f, 0.95f)
+            };
+            Color petal = petalSet[Mathf.Abs(Hash(seed, 2, 9)) % petalSet.Length];
+            Color core = new Color(1f, 0.8f, 0.2f);
+            int cx = size / 2, stemH = 6 + (Hash(seed, 3, 1) & 3);
+            for (int y = 0; y < stemH; y++) px[y * size + cx] = stem;
+            int fy = stemH + 2;
+            // 4-petal bloom + core
+            void Set(int x, int y, Color c) { if (x >= 0 && x < size && y >= 0 && y < size) px[y * size + x] = c; }
+            Set(cx, fy, core);
+            Set(cx - 1, fy, petal); Set(cx + 1, fy, petal);
+            Set(cx, fy - 1, petal); Set(cx, fy + 1, petal);
+            Set(cx - 1, fy - 1, petal * 0.92f); Set(cx + 1, fy + 1, petal * 0.92f);
+            tex.SetPixels(px);
+            tex.Apply(false, false);
+            return Sprite.Create(tex, new Rect(0, 0, size, size), new Vector2(0.5f, 0.15f), size);
+        }
+
         static int Hash(int x, int y, int seed)
         {
             int h = (x * 374761393 + y * 668265263 + seed * 982451653) ^ (x * y + seed);
