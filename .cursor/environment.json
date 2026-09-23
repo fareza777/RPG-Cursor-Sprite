@@ -1,0 +1,4 @@
+{
+  "name": "Emberwake (Unity 6000.6.1f1)",
+  "install": "bash .cursor/install-unity.sh"
+}
