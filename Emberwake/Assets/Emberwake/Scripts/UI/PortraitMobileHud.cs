@@ -208,6 +208,22 @@ namespace Emberwake
             srt.anchoredPosition = new Vector2(0f, -topPad);
             srt.sizeDelta = new Vector2(-32f, 132f);
 
+            // Ember-gold frame behind the strip (matches dialog UI language).
+            var frame = new GameObject("StatusFrame", typeof(RectTransform), typeof(CanvasRenderer), typeof(Image));
+            frame.transform.SetParent(parent, false);
+            var frameImg = frame.GetComponent<Image>();
+            frameImg.sprite = UiArt.SoftPanel();
+            frameImg.type = Image.Type.Sliced;
+            frameImg.color = new Color(0.82f, 0.53f, 0.2f, 0.85f);
+            frameImg.raycastTarget = false;
+            var frt2 = frame.GetComponent<RectTransform>();
+            frt2.anchorMin = new Vector2(0f, 1f);
+            frt2.anchorMax = new Vector2(1f, 1f);
+            frt2.pivot = new Vector2(0.5f, 1f);
+            frt2.anchoredPosition = new Vector2(0f, -topPad + 4f);
+            frt2.sizeDelta = new Vector2(-24f, 140f);
+            frame.transform.SetSiblingIndex(strip.transform.GetSiblingIndex());
+
             // Hearts row
             var rowGo = new GameObject("HeartsRow", typeof(RectTransform));
             rowGo.transform.SetParent(strip.transform, false);
