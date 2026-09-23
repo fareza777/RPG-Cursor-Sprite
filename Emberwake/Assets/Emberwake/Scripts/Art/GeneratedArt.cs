@@ -350,39 +350,75 @@ namespace Emberwake
 
         static Sprite EnemyCrawler(string key, Color col) => Get(key, () => Paint(64, (px, s) =>
         {
+            Color dark = col * 0.55f; dark.a = 1f;
+            Color lite = Color.Lerp(col, Color.white, 0.28f);
+            Color eye = new Color(1f, 0.72f, 0.22f);
             for (int y = 0; y < s; y++)
             for (int x = 0; x < s; x++)
             {
                 float nx = (x / (float)s) * 2f - 1f, ny = (y / (float)s) * 2f - 1f;
-                bool body = Mathf.Abs(nx) < 0.55f && Mathf.Abs(ny) < 0.25f;
-                bool leg = (Mathf.Abs(nx) > 0.2f && Mathf.Abs(nx) < 0.55f && ny < -0.2f && ny > -0.55f);
-                px[y * s + x] = (body || leg) ? col : Color.clear;
+                Color c = Color.clear;
+                bool body = Mathf.Abs(nx) < 0.6f && Mathf.Abs(ny) < 0.24f;
+                bool leg = Mathf.Abs(nx) < 0.6f && Mathf.Abs(ny) >= 0.24f && Mathf.Abs(ny) < 0.44f
+                           && Mathf.Sin(nx * 13f) > 0.25f;
+                if (body)
+                {
+                    c = Color.Lerp(dark, lite, (ny + 0.24f) / 0.48f);          // top-lit ridge
+                    if (Mathf.Sin(nx * 11f) > 0.55f) c = Color.Lerp(c, dark, 0.5f); // segment grooves
+                }
+                if (leg) c = dark;
+                if (nx > 0.42f && Mathf.Abs(ny - 0.02f) < 0.09f
+                    && Mathf.Abs(nx - 0.5f) < 0.07f) c = eye;                  // forward eye
+                px[y * s + x] = c;
             }
         }, FilterMode.Point));
 
         static Sprite EnemyMoth(string key, Color col) => Get(key, () => Paint(64, (px, s) =>
         {
+            Color dark = col * 0.6f; dark.a = 1f;
+            Color lite = Color.Lerp(col, Color.white, 0.4f);
+            Color eye = new Color(1f, 0.95f, 0.6f);
             for (int y = 0; y < s; y++)
             for (int x = 0; x < s; x++)
             {
                 float nx = (x / (float)s) * 2f - 1f, ny = (y / (float)s) * 2f - 1f;
-                bool wingL = ((nx + 0.35f) * (nx + 0.35f) / 0.2f + ny * ny / 0.35f) < 1f;
-                bool wingR = ((nx - 0.35f) * (nx - 0.35f) / 0.2f + ny * ny / 0.35f) < 1f;
-                bool body = Mathf.Abs(nx) < 0.1f && Mathf.Abs(ny) < 0.4f;
-                px[y * s + x] = (wingL || wingR || body) ? col : Color.clear;
+                Color c = Color.clear;
+                float wl = (nx + 0.35f) * (nx + 0.35f) / 0.2f + ny * ny / 0.35f;
+                float wr = (nx - 0.35f) * (nx - 0.35f) / 0.2f + ny * ny / 0.35f;
+                bool body = Mathf.Abs(nx) < 0.11f && Mathf.Abs(ny) < 0.42f;
+                if (wl < 1f) c = Color.Lerp(lite, dark, wl);                   // soft wing shading
+                if (wr < 1f) c = Color.Lerp(lite, dark, wr);
+                if (wl < 0.28f || wr < 0.28f) c = Color.Lerp(c, Color.white, 0.35f); // wing eyespots
+                if (body) c = Color.Lerp(dark, col, (ny + 0.42f) / 0.84f);     // fuzzy body
+                if (ny > 0.24f && Mathf.Abs(Mathf.Abs(nx) - 0.05f) < 0.035f) c = eye; // tiny eyes
+                px[y * s + x] = c;
             }
         }, FilterMode.Point));
 
         static Sprite EnemyKnight(string key, Color col) => Get(key, () => Paint(64, (px, s) =>
         {
+            Color dark = col * 0.5f; dark.a = 1f;
+            Color lite = Color.Lerp(col, Color.white, 0.32f);
+            Color eye = new Color(0.7f, 0.95f, 1f);   // pale hollow glow
             for (int y = 0; y < s; y++)
             for (int x = 0; x < s; x++)
             {
                 float nx = (x / (float)s) * 2f - 1f, ny = (y / (float)s) * 2f - 1f;
-                bool helm = Mathf.Abs(nx) < 0.35f && ny > 0.05f && ny < 0.55f;
-                bool torso = Mathf.Abs(nx) < 0.28f && ny > -0.35f && ny < 0.1f;
-                bool blade = nx > 0.2f && nx < 0.55f && Mathf.Abs(ny + 0.05f) < 0.08f;
-                px[y * s + x] = (helm || torso || blade) ? col : Color.clear;
+                Color c = Color.clear;
+                bool helm = Mathf.Abs(nx) < 0.32f && ny > 0.08f && ny < 0.55f;
+                bool torso = Mathf.Abs(nx) < 0.30f && ny > -0.45f && ny < 0.12f;
+                bool pauldron = Mathf.Abs(nx) > 0.26f && Mathf.Abs(nx) < 0.46f && ny > -0.05f && ny < 0.16f;
+                bool blade = nx > 0.24f && nx < 0.62f && Mathf.Abs(ny + 0.06f) < 0.055f;
+                if (helm || torso)
+                {
+                    c = Color.Lerp(dark, col, (ny + 0.5f));                    // top-lit metal
+                    c = Color.Lerp(c, dark, Mathf.Abs(nx) * 0.7f);            // rounded shading
+                }
+                if (pauldron) c = dark;
+                if (helm && ny > 0.46f) c = lite;                             // helm crest
+                if (ny > 0.22f && ny < 0.34f && Mathf.Abs(Mathf.Abs(nx) - 0.12f) < 0.045f) c = eye; // visor eyes
+                if (blade) c = Color.Lerp(lite, Color.white, 0.4f);          // steel blade
+                px[y * s + x] = c;
             }
         }, FilterMode.Point));
 
