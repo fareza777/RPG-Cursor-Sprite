@@ -131,13 +131,29 @@ namespace Emberwake
             {
                 var line = queue.Dequeue();
                 speakerLabel.text = string.IsNullOrEmpty(line.Speaker) ? "…" : line.Speaker;
-                bodyLabel.text = line.Text ?? "";
                 if (portraitImage != null)
                 {
                     portraitImage.sprite = GeneratedArt.PortraitFor(line.Speaker);
                 }
+
+                // Typewriter reveal — tap once to reveal instantly, tap again to advance.
+                string full = line.Text ?? "";
+                bodyLabel.text = "";
                 tap = false;
-                yield return new WaitForSecondsRealtime(0.18f);
+                float revealed = 0f;
+                const float charsPerSecond = 42f;
+                while (revealed < full.Length)
+                {
+                    if (tap) { tap = false; break; }
+                    revealed += Time.unscaledDeltaTime * charsPerSecond;
+                    int shown = Mathf.Clamp(Mathf.FloorToInt(revealed), 0, full.Length);
+                    bodyLabel.text = full.Substring(0, shown);
+                    yield return null;
+                }
+                bodyLabel.text = full;
+
+                tap = false;
+                yield return new WaitForSecondsRealtime(0.12f);
                 tap = false;
                 while (!tap) yield return null;
             }
