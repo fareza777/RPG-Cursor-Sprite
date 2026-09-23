@@ -39,6 +39,7 @@ namespace Emberwake
             {
                 if (a == "-emberwakeMenu") { yield return MainMenu(); yield break; }
                 if (a == "-emberwakeSettings") { yield return MainMenu(); yield break; }
+                if (a == "-emberwakeAbout") { yield return MainMenu(); yield break; }
                 if (a == "-emberwakeCine") { yield return Cinematic(); yield break; }
                 if (a == "-emberwakeOnboard") { yield return Onboarding(); yield break; }
             }
@@ -519,15 +520,19 @@ namespace Emberwake
                 AudioDirector.Instance?.PlayUi();
                 OpenSettings();
             });
-            AddTap(aboutBtn.gameObject, () =>
+            void OpenAbout()
             {
-                AudioDirector.Instance?.PlayUi();
                 page = "about";
                 SetControlsVisible(false);
                 contBtn.gameObject.SetActive(false);
                 playBtn.gameObject.SetActive(true);
                 playTxt.text = "KEMBALI";
                 body.text = "EMBERWAKE\nEmberwake Studio · v0.2\n\nAction RPG portrait.\nKael menjaga Wick terakhir Virelia.\n\nMillbrook → Hollowroot → Altar.";
+            }
+            AddTap(aboutBtn.gameObject, () =>
+            {
+                AudioDirector.Instance?.PlayUi();
+                OpenAbout();
             });
             AddTap(shareBtn.gameObject, () =>
             {
@@ -542,7 +547,10 @@ namespace Emberwake
 
             ShowHome();
             foreach (var a in System.Environment.GetCommandLineArgs())
+            {
                 if (a == "-emberwakeSettings") OpenSettings();
+                else if (a == "-emberwakeAbout") OpenAbout();
+            }
 
             var guideBtn = FramedButton(layer.transform, "Guide",
                 new Color(0.14f, 0.16f, 0.22f, 1f), new Color(0.55f, 0.55f, 0.5f, 0.9f));
