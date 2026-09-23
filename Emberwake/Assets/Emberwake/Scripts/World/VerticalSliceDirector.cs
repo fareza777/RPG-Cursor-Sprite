@@ -886,8 +886,14 @@ namespace Emberwake
             sr.sortingOrder = order;
             // Torches are the only props spawned at order 11 — give each a live ember glow.
             if (order == 11)
-                AttachGlow(go.transform, new Vector2(0f, 0.45f / Mathf.Max(0.01f, scale)), 3.1f,
+            {
+                float fy = 0.45f / Mathf.Max(0.01f, scale);
+                AttachGlow(go.transform, new Vector2(0f, fy), 3.1f,
                     new Color(1f, 0.55f, 0.18f, 0.7f), 12, 4.2f, 0.3f);
+                // Bright, fast-flickering hot core so the flame reads as live fire.
+                AttachGlow(go.transform, new Vector2(0f, fy), 0.95f,
+                    new Color(1f, 0.92f, 0.6f, 0.85f), 13, 7.5f, 0.34f);
+            }
         }
 
         static Sprite glowSprite;
