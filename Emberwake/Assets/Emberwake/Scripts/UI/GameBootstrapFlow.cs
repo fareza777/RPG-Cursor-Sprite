@@ -38,6 +38,7 @@ namespace Emberwake
             foreach (var a in System.Environment.GetCommandLineArgs())
             {
                 if (a == "-emberwakeMenu") { yield return MainMenu(); yield break; }
+                if (a == "-emberwakeSettings") { yield return MainMenu(); yield break; }
                 if (a == "-emberwakeCine") { yield return Cinematic(); yield break; }
                 if (a == "-emberwakeOnboard") { yield return Onboarding(); yield break; }
             }
@@ -386,9 +387,51 @@ namespace Emberwake
             var shareBtn = SmallBtn(layer.transform, "Share", "BAGIKAN", new Vector2(0.62f, rowY));
             var rateBtn = SmallBtn(layer.transform, "Rate", "NILAI", new Vector2(0.82f, rowY));
 
+            // Visible Music/SFX controls, shown only on the settings page (replaces the
+            // old invisible tap-zones with real +/- buttons and live percentage readouts).
+            var setControls = new System.Collections.Generic.List<GameObject>();
+            Text musicVal = null, sfxVal = null;
+            void RefreshSettings()
+            {
+                if (musicVal != null) musicVal.text = Mathf.RoundToInt(GameSettings.MusicVolume * 100f) + "%";
+                if (sfxVal != null) sfxVal.text = Mathf.RoundToInt(GameSettings.SfxVolume * 100f) + "%";
+            }
+            void SetControlsVisible(bool v)
+            {
+                foreach (var g in setControls) if (g != null) g.SetActive(v);
+            }
+            Image AdjBtn(string nm, string glyph, Vector2 anchor, System.Action onTap)
+            {
+                var b = FramedButton(layer.transform, nm,
+                    new Color(0.16f, 0.18f, 0.24f, 1f), new Color(0.9f, 0.7f, 0.35f, 0.95f));
+                b.rectTransform.anchorMin = b.rectTransform.anchorMax = anchor;
+                b.rectTransform.sizeDelta = new Vector2(76f, 76f);
+                Label(b.transform, nm + "T", glyph, 40, new Vector2(0.5f, 0.5f), Color.white).fontStyle = FontStyle.Bold;
+                AddTap(b.gameObject, () => { AudioDirector.Instance?.PlayUi(); onTap(); RefreshSettings(); });
+                setControls.Add(b.gameObject);
+                return b;
+            }
+            Text SetLabel(string nm, string content, Vector2 anchor, int size, Color col)
+            {
+                var l = Label(layer.transform, nm, content, size, anchor, col);
+                setControls.Add(l.gameObject);
+                return l;
+            }
+            SetLabel("SetTitle", "SETTING", new Vector2(0.5f, 0.585f), 34, new Color(1f, 0.82f, 0.34f)).fontStyle = FontStyle.Bold;
+            SetLabel("MLabel", "MUSIK", new Vector2(0.28f, 0.50f), 26, new Color(0.95f, 0.92f, 0.84f));
+            AdjBtn("MDown", "-", new Vector2(0.5f, 0.50f), () => GameSettings.MusicVolume = Mathf.Clamp01(GameSettings.MusicVolume - 0.1f));
+            musicVal = SetLabel("MVal", "", new Vector2(0.62f, 0.50f), 28, new Color(1f, 0.85f, 0.4f));
+            AdjBtn("MUp", "+", new Vector2(0.74f, 0.50f), () => GameSettings.MusicVolume = Mathf.Clamp01(GameSettings.MusicVolume + 0.1f));
+            SetLabel("SLabel", "SFX", new Vector2(0.28f, 0.42f), 26, new Color(0.95f, 0.92f, 0.84f));
+            AdjBtn("SDown", "-", new Vector2(0.5f, 0.42f), () => GameSettings.SfxVolume = Mathf.Clamp01(GameSettings.SfxVolume - 0.1f));
+            sfxVal = SetLabel("SVal", "", new Vector2(0.62f, 0.42f), 28, new Color(1f, 0.85f, 0.4f));
+            AdjBtn("SUp", "+", new Vector2(0.74f, 0.42f), () => GameSettings.SfxVolume = Mathf.Clamp01(GameSettings.SfxVolume + 0.1f));
+            SetControlsVisible(false);
+
             void ShowHome()
             {
                 page = "home";
+                SetControlsVisible(false);
                 body.text = "Quest: Wick Hollowroot → Gloves → Barkling → Altar\n\nNew Game mulai dari Millbrook.\nLanjutkan memuat save terakhir.";
                 playTxt.text = "GAME BARU";
                 playBtn.gameObject.SetActive(true);
@@ -421,20 +464,26 @@ namespace Emberwake
                     PortraitMobileHud.Instance?.ShowToast("Belum ada save — mulai baru");
                 }
             });
+            void OpenSettings()
+            {
+                page = "settings";
+                contBtn.gameObject.SetActive(false);
+                playBtn.gameObject.SetActive(true);
+                playTxt.text = "KEMBALI";
+                body.text = "";
+                SetControlsVisible(true);
+                RefreshSettings();
+            }
             AddTap(setBtn.gameObject, () =>
             {
                 AudioDirector.Instance?.PlayUi();
-                page = "settings";
-                playBtn.gameObject.SetActive(false);
-                contBtn.gameObject.SetActive(false);
-                body.text = SettingsText();
-                playBtn.gameObject.SetActive(true);
-                playTxt.text = "KEMBALI";
+                OpenSettings();
             });
             AddTap(aboutBtn.gameObject, () =>
             {
                 AudioDirector.Instance?.PlayUi();
                 page = "about";
+                SetControlsVisible(false);
                 contBtn.gameObject.SetActive(false);
                 playBtn.gameObject.SetActive(true);
                 playTxt.text = "KEMBALI";
@@ -451,54 +500,9 @@ namespace Emberwake
                 GameSettings.RateOnStore();
             });
 
-            // Settings adjust while settings page open
-            var hitL = Panel(layer.transform, "HitL", new Color(0, 0, 0, 0.01f), true);
-            hitL.rectTransform.anchorMin = new Vector2(0f, 0.4f);
-            hitL.rectTransform.anchorMax = new Vector2(0.5f, 0.58f);
-            hitL.rectTransform.offsetMin = hitL.rectTransform.offsetMax = Vector2.zero;
-            var hitR = Panel(layer.transform, "HitR", new Color(0, 0, 0, 0.01f), true);
-            hitR.rectTransform.anchorMin = new Vector2(0.5f, 0.4f);
-            hitR.rectTransform.anchorMax = new Vector2(1f, 0.58f);
-            hitR.rectTransform.offsetMin = hitR.rectTransform.offsetMax = Vector2.zero;
-            AddTap(hitL.gameObject, () =>
-            {
-                if (page != "settings") return;
-                GameSettings.MusicVolume = Mathf.Clamp01(GameSettings.MusicVolume - 0.1f);
-                body.text = SettingsText();
-            });
-            AddTap(hitR.gameObject, () =>
-            {
-                if (page != "settings") return;
-                GameSettings.MusicVolume = Mathf.Clamp01(GameSettings.MusicVolume + 0.1f);
-                body.text = SettingsText();
-            });
-            var hitU = Panel(layer.transform, "HitU", new Color(0, 0, 0, 0.01f), true);
-            hitU.rectTransform.anchorMin = new Vector2(0.15f, 0.58f);
-            hitU.rectTransform.anchorMax = new Vector2(0.85f, 0.7f);
-            hitU.rectTransform.offsetMin = hitU.rectTransform.offsetMax = Vector2.zero;
-            var hitD = Panel(layer.transform, "HitD", new Color(0, 0, 0, 0.01f), true);
-            hitD.rectTransform.anchorMin = new Vector2(0.15f, 0.38f);
-            hitD.rectTransform.anchorMax = new Vector2(0.85f, 0.5f);
-            hitD.rectTransform.offsetMin = hitD.rectTransform.offsetMax = Vector2.zero;
-            AddTap(hitU.gameObject, () =>
-            {
-                if (page != "settings") return;
-                GameSettings.SfxVolume = Mathf.Clamp01(GameSettings.SfxVolume + 0.1f);
-                body.text = SettingsText();
-            });
-            AddTap(hitD.gameObject, () =>
-            {
-                if (page != "settings") return;
-                GameSettings.SfxVolume = Mathf.Clamp01(GameSettings.SfxVolume - 0.1f);
-                body.text = SettingsText();
-            });
-
-            string SettingsText() =>
-                "SETTING\n\nMusik  " + Mathf.RoundToInt(GameSettings.MusicVolume * 100) +
-                "%\nSFX    " + Mathf.RoundToInt(GameSettings.SfxVolume * 100) +
-                "%\n\nKiri / kanan = musik\nAtas / bawah = SFX";
-
             ShowHome();
+            foreach (var a in System.Environment.GetCommandLineArgs())
+                if (a == "-emberwakeSettings") OpenSettings();
 
             var guideBtn = FramedButton(layer.transform, "Guide",
                 new Color(0.14f, 0.16f, 0.22f, 1f), new Color(0.55f, 0.55f, 0.5f, 0.9f));
