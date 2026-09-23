@@ -103,6 +103,8 @@ namespace Emberwake
             {
                 if (GameManager.Instance != null && GameManager.Instance.WickRank != null)
                     GameManager.Instance.WickRank.AddEssence(8);
+                CombatVfx.Burst(transform.position, new Color(1f, 0.8f, 0.4f));
+                FeelFeedback.Shake(0.14f, 0.12f);
                 Destroy(gameObject, 0.05f);
             }
         }

@@ -32,6 +32,25 @@ namespace Emberwake
             return spark;
         }
 
+        /// <summary>Death burst: expanding shockwave + a scatter of sparks.</summary>
+        public static void Burst(Vector3 pos, Color color)
+        {
+            var wave = new GameObject("FX_DeathWave");
+            wave.transform.position = pos;
+            var wsr = wave.AddComponent<SpriteRenderer>();
+            wsr.sprite = SparkSprite();
+            wsr.color = new Color(color.r, color.g, color.b, 0.85f);
+            wsr.sortingOrder = 44;
+            wave.AddComponent<HitSparkFx>().Init(2.2f);
+            int n = 6;
+            for (int i = 0; i < n; i++)
+            {
+                float ang = (i / (float)n) * Mathf.PI * 2f + Random.Range(-0.3f, 0.3f);
+                var off = new Vector3(Mathf.Cos(ang), Mathf.Sin(ang), 0f) * Random.Range(0.25f, 0.6f);
+                Spark(pos + off, color, Random.Range(0.5f, 0.9f));
+            }
+        }
+
         public static void Spark(Vector3 pos, Color color, float size = 1.0f)
         {
             var go = new GameObject("FX_HitSpark");
