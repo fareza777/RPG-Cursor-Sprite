@@ -279,11 +279,16 @@ namespace Emberwake
             var inv = GameManager.Instance?.Inventory;
             if (inv == null) return "Inventaris belum siap.";
             var sb = new StringBuilder();
+            string sword = inv.HasKeyItem(KeyItemId.Ashbrand) ? "Ashbrand" : "Pedang Latihan";
+            string bow = inv.HasKeyItem(KeyItemId.TideBow) ? "Tide Bow" : "—";
+            string shield = inv.HasKeyItem(KeyItemId.MirageShield) ? "Mirage Shield" : "—";
+            string lantern = inv.LanternTier >= 3 ? "Heartwick"
+                : inv.LanternTier >= 2 ? "Echo Lantern" : "Wick Lentera";
             sb.AppendLine("══ EQUIPMENT ══");
-            sb.AppendLine($"Pedang     Tier {inv.SwordTier}");
-            sb.AppendLine($"Busur      Tier {inv.BowTier}");
-            sb.AppendLine($"Perisai    Tier {inv.ShieldTier}");
-            sb.AppendLine($"Lentera    Tier {inv.LanternTier}");
+            sb.AppendLine($"Pedang     {sword}  (T{inv.SwordTier})");
+            sb.AppendLine($"Busur      {bow}  (T{inv.BowTier})");
+            sb.AppendLine($"Perisai    {shield}  (T{inv.ShieldTier})");
+            sb.AppendLine($"Lentera    {lantern}  (T{inv.LanternTier})");
             sb.AppendLine();
             sb.AppendLine("══ KANTONG ══");
             sb.AppendLine($"Emas          {inv.Gold}");
