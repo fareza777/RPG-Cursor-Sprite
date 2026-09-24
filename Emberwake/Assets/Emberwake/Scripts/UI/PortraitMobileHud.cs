@@ -270,6 +270,14 @@ namespace Emberwake
             hfrt.offsetMin = new Vector2(3f, 3f);
             hfrt.offsetMax = new Vector2(-3f, -3f);
 
+            // Glossy sheen over the top half of the bar (drawn above the fill).
+            var hpGloss = CreateImage(hpBg.transform, "HpGloss", UiArt.WhiteQuad(),
+                new Vector2(0f, 0.52f), new Vector2(1f, 1f), Vector2.zero, Vector2.zero,
+                new Color(1f, 1f, 1f, 0.16f));
+            hpGloss.raycastTarget = false;
+            hpGloss.rectTransform.offsetMin = new Vector2(4f, 0f);
+            hpGloss.rectTransform.offsetMax = new Vector2(-4f, -3f);
+
             // Stamina bar — solid white quad fill (works with Image.Filled)
             var stamBg = CreateImage(strip.transform, "StamBg", UiArt.SoftPanel(),
                 new Vector2(0f, 0.04f), new Vector2(0.98f, 0.26f),
@@ -291,6 +299,13 @@ namespace Emberwake
             var frt = stamFill.rectTransform;
             frt.offsetMin = new Vector2(3f, 3f);
             frt.offsetMax = new Vector2(-3f, -3f);
+
+            var stamGloss = CreateImage(stamBg.transform, "StamGloss", UiArt.WhiteQuad(),
+                new Vector2(0f, 0.52f), new Vector2(1f, 1f), Vector2.zero, Vector2.zero,
+                new Color(1f, 1f, 1f, 0.16f));
+            stamGloss.raycastTarget = false;
+            stamGloss.rectTransform.offsetMin = new Vector2(4f, 0f);
+            stamGloss.rectTransform.offsetMax = new Vector2(-4f, -3f);
 
             stamLabel = CreateAnchoredText(stamBg.transform, "StamTxt", "ST 50", 20,
                 TextAnchor.MiddleCenter, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f),
