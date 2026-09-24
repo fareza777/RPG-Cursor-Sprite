@@ -82,10 +82,35 @@ namespace Emberwake
         });
         public static Sprite IconBook() => Glyph("i_book", (nx, ny) =>
         {
-            bool page = Mathf.Abs(nx) < 0.45f && Mathf.Abs(ny) < 0.55f;
-            bool spine = Mathf.Abs(nx) < 0.06f && Mathf.Abs(ny) < 0.55f;
-            if (!page) return Color.clear;
-            return spine ? new Color(0.55f, 0.35f, 0.15f) : new Color(0.92f, 0.88f, 0.75f);
+            // Closed tome: red cover, cream page fore-edge on the right, dark spine
+            // on the left, and a gold title band — reads clearly as a book.
+            bool cover = Mathf.Abs(nx) < 0.44f && Mathf.Abs(ny) < 0.54f;
+            if (!cover) return Color.clear;
+            if (nx > 0.30f) return new Color(0.93f, 0.89f, 0.76f);              // pages (fore-edge)
+            if (nx > 0.24f) return new Color(0.55f, 0.4f, 0.22f);              // edge shadow
+            if (nx < -0.34f) return new Color(0.36f, 0.1f, 0.09f);            // spine
+            if (Mathf.Abs(ny) < 0.07f && nx < 0.2f) return new Color(0.96f, 0.8f, 0.34f); // title band
+            return new Color(0.62f, 0.2f, 0.17f);                             // cover
+        });
+        public static Sprite IconPouch() => Glyph("i_pouch", (nx, ny) =>
+        {
+            // Drawstring belt pouch: rounded bag body, a cinched neck, and a flap.
+            Color leather = new Color(0.62f, 0.4f, 0.2f);
+            Color dark = new Color(0.42f, 0.26f, 0.12f);
+            Color tie = new Color(0.85f, 0.68f, 0.3f);
+            float bodyR = (nx * nx) / 0.36f + ((ny + 0.15f) * (ny + 0.15f)) / 0.42f;
+            bool body = bodyR < 1f && ny < 0.35f;
+            bool neck = Mathf.Abs(nx) < 0.24f && ny > 0.25f && ny < 0.5f;
+            bool tieBand = Mathf.Abs(ny - 0.3f) < 0.07f && Mathf.Abs(nx) < 0.3f;
+            if (tieBand) return tie;
+            if (neck) return dark;
+            if (body)
+            {
+                if (ny < -0.35f) return dark;                 // bottom shadow
+                if (nx < -0.1f && ny > -0.1f) return Color.Lerp(leather, Color.white, 0.15f); // sheen
+                return leather;
+            }
+            return Color.clear;
         });
         public static Sprite IconSave() => Glyph("i_save", (nx, ny) =>
         {
@@ -350,52 +375,132 @@ namespace Emberwake
 
         static Sprite EnemyCrawler(string key, Color col) => Get(key, () => Paint(64, (px, s) =>
         {
+            Color dark = col * 0.55f; dark.a = 1f;
+            Color lite = Color.Lerp(col, Color.white, 0.28f);
+            Color eye = new Color(1f, 0.72f, 0.22f);
             for (int y = 0; y < s; y++)
             for (int x = 0; x < s; x++)
             {
                 float nx = (x / (float)s) * 2f - 1f, ny = (y / (float)s) * 2f - 1f;
-                bool body = Mathf.Abs(nx) < 0.55f && Mathf.Abs(ny) < 0.25f;
-                bool leg = (Mathf.Abs(nx) > 0.2f && Mathf.Abs(nx) < 0.55f && ny < -0.2f && ny > -0.55f);
-                px[y * s + x] = (body || leg) ? col : Color.clear;
+                Color c = Color.clear;
+                bool body = Mathf.Abs(nx) < 0.6f && Mathf.Abs(ny) < 0.24f;
+                bool leg = Mathf.Abs(nx) < 0.6f && Mathf.Abs(ny) >= 0.24f && Mathf.Abs(ny) < 0.44f
+                           && Mathf.Sin(nx * 13f) > 0.25f;
+                if (body)
+                {
+                    c = Color.Lerp(dark, lite, (ny + 0.24f) / 0.48f);          // top-lit ridge
+                    if (Mathf.Sin(nx * 11f) > 0.55f) c = Color.Lerp(c, dark, 0.5f); // segment grooves
+                }
+                if (leg) c = dark;
+                if (nx > 0.42f && Mathf.Abs(ny - 0.02f) < 0.09f
+                    && Mathf.Abs(nx - 0.5f) < 0.07f) c = eye;                  // forward eye
+                px[y * s + x] = c;
             }
         }, FilterMode.Point));
 
         static Sprite EnemyMoth(string key, Color col) => Get(key, () => Paint(64, (px, s) =>
         {
+            Color dark = col * 0.6f; dark.a = 1f;
+            Color lite = Color.Lerp(col, Color.white, 0.4f);
+            Color eye = new Color(1f, 0.95f, 0.6f);
             for (int y = 0; y < s; y++)
             for (int x = 0; x < s; x++)
             {
                 float nx = (x / (float)s) * 2f - 1f, ny = (y / (float)s) * 2f - 1f;
-                bool wingL = ((nx + 0.35f) * (nx + 0.35f) / 0.2f + ny * ny / 0.35f) < 1f;
-                bool wingR = ((nx - 0.35f) * (nx - 0.35f) / 0.2f + ny * ny / 0.35f) < 1f;
-                bool body = Mathf.Abs(nx) < 0.1f && Mathf.Abs(ny) < 0.4f;
-                px[y * s + x] = (wingL || wingR || body) ? col : Color.clear;
+                Color c = Color.clear;
+                float wl = (nx + 0.35f) * (nx + 0.35f) / 0.2f + ny * ny / 0.35f;
+                float wr = (nx - 0.35f) * (nx - 0.35f) / 0.2f + ny * ny / 0.35f;
+                bool body = Mathf.Abs(nx) < 0.11f && Mathf.Abs(ny) < 0.42f;
+                if (wl < 1f) c = Color.Lerp(lite, dark, wl);                   // soft wing shading
+                if (wr < 1f) c = Color.Lerp(lite, dark, wr);
+                if (wl < 0.28f || wr < 0.28f) c = Color.Lerp(c, Color.white, 0.35f); // wing eyespots
+                if (body) c = Color.Lerp(dark, col, (ny + 0.42f) / 0.84f);     // fuzzy body
+                if (ny > 0.24f && Mathf.Abs(Mathf.Abs(nx) - 0.05f) < 0.035f) c = eye; // tiny eyes
+                px[y * s + x] = c;
             }
         }, FilterMode.Point));
 
         static Sprite EnemyKnight(string key, Color col) => Get(key, () => Paint(64, (px, s) =>
         {
+            Color dark = col * 0.5f; dark.a = 1f;
+            Color lite = Color.Lerp(col, Color.white, 0.32f);
+            Color eye = new Color(0.7f, 0.95f, 1f);   // pale hollow glow
             for (int y = 0; y < s; y++)
             for (int x = 0; x < s; x++)
             {
                 float nx = (x / (float)s) * 2f - 1f, ny = (y / (float)s) * 2f - 1f;
-                bool helm = Mathf.Abs(nx) < 0.35f && ny > 0.05f && ny < 0.55f;
-                bool torso = Mathf.Abs(nx) < 0.28f && ny > -0.35f && ny < 0.1f;
-                bool blade = nx > 0.2f && nx < 0.55f && Mathf.Abs(ny + 0.05f) < 0.08f;
-                px[y * s + x] = (helm || torso || blade) ? col : Color.clear;
+                Color c = Color.clear;
+                bool helm = Mathf.Abs(nx) < 0.32f && ny > 0.08f && ny < 0.55f;
+                bool torso = Mathf.Abs(nx) < 0.30f && ny > -0.45f && ny < 0.12f;
+                bool pauldron = Mathf.Abs(nx) > 0.26f && Mathf.Abs(nx) < 0.46f && ny > -0.05f && ny < 0.16f;
+                bool blade = nx > 0.24f && nx < 0.62f && Mathf.Abs(ny + 0.06f) < 0.055f;
+                if (helm || torso)
+                {
+                    c = Color.Lerp(dark, col, (ny + 0.5f));                    // top-lit metal
+                    c = Color.Lerp(c, dark, Mathf.Abs(nx) * 0.7f);            // rounded shading
+                }
+                if (pauldron) c = dark;
+                if (helm && ny > 0.46f) c = lite;                             // helm crest
+                if (ny > 0.22f && ny < 0.34f && Mathf.Abs(Mathf.Abs(nx) - 0.12f) < 0.045f) c = eye; // visor eyes
+                if (blade) c = Color.Lerp(lite, Color.white, 0.4f);          // steel blade
+                px[y * s + x] = c;
             }
         }, FilterMode.Point));
 
-        static Sprite EnemyBoss(string key, Color col) => Get(key, () => Paint(80, (px, s) =>
+        // Barkling: a hunched bark/root golem — jagged wooden trunk, root spikes,
+        // two glowing amber eyes and a cracked ember maw. Reads clearly as a boss.
+        static Sprite EnemyBoss(string key, Color col) => Get(key, () => Paint(96, (px, s) =>
         {
-            float cx = s * 0.5f, cy = s * 0.45f;
+            float cx = s * 0.5f;
+            Color bark = Color.Lerp(new Color(0.30f, 0.34f, 0.22f), col, 0.25f);
+            Color barkDark = new Color(0.15f, 0.18f, 0.11f);
+            Color barkLite = new Color(0.46f, 0.52f, 0.33f);
+            Color eye = new Color(1f, 0.80f, 0.28f);
+            Color ember = new Color(1f, 0.44f, 0.12f);
             for (int y = 0; y < s; y++)
             for (int x = 0; x < s; x++)
             {
-                float dx = (x - cx) / (s * 0.4f), dy = (y - cy) / (s * 0.42f);
+                float nx = (x - cx) / (s * 0.5f);
+                float ny = (y / (float)s) * 2f - 1f;   // -1 bottom .. +1 top
                 Color c = Color.clear;
-                if (dx * dx + dy * dy < 1f) c = Color.Lerp(col, new Color(0.2f, 0.35f, 0.15f), dy * 0.5f + 0.5f);
-                if ((x - cx) * (x - cx) + (y - cy - 8) * (y - cy - 8) < 36) c = new Color(0.95f, 0.85f, 0.2f);
+
+                // Hunched trunk: domed shoulders on top, broad base
+                float shoulder = 0.60f + 0.10f * Mathf.Cos(nx * 3.14159f);
+                float halfWidth = Mathf.Lerp(0.80f, 0.52f, Mathf.InverseLerp(-0.8f, 0.72f, ny));
+                bool inBody = ny < 0.72f && ny > -0.78f && Mathf.Abs(nx) < halfWidth
+                              && (ny < 0.46f || Mathf.Abs(nx) < shoulder);
+                if (inBody)
+                {
+                    float groove = Mathf.Sin(nx * 9f + ny * 2f) * 0.5f + 0.5f;   // vertical bark grain
+                    c = Color.Lerp(barkDark, bark, groove);
+                    if (ny > 0.58f) c = Color.Lerp(c, barkLite, (ny - 0.58f) * 3.5f); // thin mossy crown
+                    c = Color.Lerp(c, barkDark, Mathf.Abs(nx) * 0.45f);            // side shade
+                }
+
+                // Root spikes fanning out at the base
+                if (ny <= -0.55f && ny > -0.98f)
+                {
+                    float spikes = Mathf.Abs(Mathf.Sin(nx * 6.5f));
+                    float depth = Mathf.InverseLerp(-0.55f, -0.98f, ny);
+                    if (spikes > depth && Mathf.Abs(nx) < 0.82f) c = barkDark;
+                }
+
+                // Sunken dark sockets, then small bright glowing eyes for a clear face
+                const float ey = 0.24f;
+                float eL = Mathf.Pow((nx + 0.22f) * 2.6f, 2) + Mathf.Pow((ny - ey) * 2.6f, 2);
+                float eR = Mathf.Pow((nx - 0.22f) * 2.6f, 2) + Mathf.Pow((ny - ey) * 2.6f, 2);
+                if (eL < 1f || eR < 1f) c = new Color(0.06f, 0.07f, 0.05f);         // socket
+                float pL = Mathf.Pow((nx + 0.22f) * 5.2f, 2) + Mathf.Pow((ny - ey) * 5.2f, 2);
+                float pR = Mathf.Pow((nx - 0.22f) * 5.2f, 2) + Mathf.Pow((ny - ey) * 5.2f, 2);
+                if (pL < 1f || pR < 1f) c = eye;                                    // glowing pupil
+
+                // Cracked ember maw
+                if (ny < 0.04f && ny > -0.14f && Mathf.Abs(nx) < 0.34f)
+                {
+                    float crack = Mathf.Abs(ny + 0.05f) * 13f + Mathf.Sin(nx * 16f) * 0.16f;
+                    if (crack < 0.55f) c = Color.Lerp(ember, eye, Mathf.Abs(nx) * 1.4f);
+                }
+
                 px[y * s + x] = c;
             }
         }, FilterMode.Point));

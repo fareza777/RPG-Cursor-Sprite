@@ -15,6 +15,9 @@ namespace Emberwake
         Text titleLabel;
         Text bodyLabel;
         Image iconImage;
+        Image xpBarBg;
+        Image xpFill;
+        Text xpBarLabel;
         string page = "home";
         bool open;
 
@@ -35,9 +38,15 @@ namespace Emberwake
                 new Color(0f, 0f, 0f, 0.72f), true);
             Stretch(dim.rectTransform);
 
+            // Ember-gold frame behind the panel (consistent UI language).
+            var frame = MakeImage(root.transform, "Frame", UiArt.SoftPanel(),
+                new Vector2(0.055f, 0.11f), new Vector2(0.945f, 0.91f), Vector2.zero, Vector2.zero,
+                new Color(0.82f, 0.53f, 0.2f, 0.9f), false);
+            frame.type = Image.Type.Sliced;
+
             var panel = MakeImage(root.transform, "Panel", UiArt.FramePanel(),
                 new Vector2(0.06f, 0.12f), new Vector2(0.94f, 0.9f), Vector2.zero, Vector2.zero,
-                new Color(0.1f, 0.09f, 0.08f, 0.98f), true);
+                new Color(0.09f, 0.07f, 0.11f, 0.99f), true);
             panel.type = Image.Type.Sliced;
 
             iconImage = MakeImage(panel.transform, "Icon", GeneratedArt.IconWick(),
@@ -48,17 +57,39 @@ namespace Emberwake
                 new Vector2(0.5f, 1f), new Vector2(0f, -160f), new Vector2(800f, 60f),
                 new Color(1f, 0.85f, 0.35f));
             titleLabel.fontStyle = FontStyle.Bold;
+            titleLabel.gameObject.AddComponent<Outline>().effectColor = new Color(0.3f, 0.1f, 0f, 0.9f);
 
             bodyLabel = MakeText(panel.transform, "Body", "", 26,
-                new Vector2(0.5f, 0.42f), Vector2.zero, new Vector2(820f, 720f),
+                new Vector2(0.5f, 0.52f), Vector2.zero, new Vector2(820f, 760f),
                 new Color(0.92f, 0.9f, 0.84f));
             bodyLabel.alignment = TextAnchor.UpperLeft;
 
+            // Graphical XP meter (shown only on the Level page).
+            xpBarBg = MakeImage(panel.transform, "XpBarBg", UiArt.SoftPanel(),
+                new Vector2(0.5f, 0.72f), new Vector2(0.5f, 0.72f), Vector2.zero, new Vector2(640f, 34f),
+                new Color(0.14f, 0.12f, 0.18f, 1f), false);
+            xpBarBg.type = Image.Type.Sliced;
+            xpBarBg.preserveAspect = false;
+            xpFill = MakeImage(xpBarBg.transform, "XpFill", UiArt.WhiteQuad(),
+                Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero,
+                new Color(1f, 0.82f, 0.3f, 1f), false);
+            xpFill.preserveAspect = false;
+            xpFill.type = Image.Type.Filled;
+            xpFill.fillMethod = Image.FillMethod.Horizontal;
+            xpFill.fillOrigin = (int)Image.OriginHorizontal.Left;
+            xpFill.fillAmount = 0f;
+            xpFill.rectTransform.offsetMin = new Vector2(4f, 4f);
+            xpFill.rectTransform.offsetMax = new Vector2(-4f, -4f);
+            xpBarLabel = MakeText(xpBarBg.transform, "XpBarTxt", "", 20,
+                new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(600f, 34f), Color.white);
+            xpBarLabel.fontStyle = FontStyle.Bold;
+
             float y = 0.08f;
-            MakeNav(panel.transform, "Karakter", GeneratedArt.IconSword(), () => ShowPage("character"), new Vector2(0.18f, y));
-            MakeNav(panel.transform, "Level", GeneratedArt.IconStar(), () => ShowPage("level"), new Vector2(0.38f, y));
-            MakeNav(panel.transform, "Quest", GeneratedArt.IconQuest(), () => ShowPage("quests"), new Vector2(0.58f, y));
-            MakeNav(panel.transform, "Bestiar", GeneratedArt.IconBook(), () => ShowPage("bestiary"), new Vector2(0.78f, y));
+            MakeNav(panel.transform, "Karakter", GeneratedArt.IconSword(), () => ShowPage("character"), new Vector2(0.12f, y));
+            MakeNav(panel.transform, "Barang", GeneratedArt.IconPouch(), () => ShowPage("items"), new Vector2(0.31f, y));
+            MakeNav(panel.transform, "Level", GeneratedArt.IconStar(), () => ShowPage("level"), new Vector2(0.5f, y));
+            MakeNav(panel.transform, "Quest", GeneratedArt.IconQuest(), () => ShowPage("quests"), new Vector2(0.69f, y));
+            MakeNav(panel.transform, "Bestiar", GeneratedArt.IconBook(), () => ShowPage("bestiary"), new Vector2(0.88f, y));
 
             var saveBtn = MakeButton(panel.transform, "SaveBtn", "SAVE", GeneratedArt.SoftButton(),
                 new Vector2(0.28f, 0.02f), new Vector2(220f, 70f), () => ShowPage("save"));
@@ -115,6 +146,13 @@ namespace Emberwake
             ShowPage("home");
         }
 
+        /// <summary>QA/screenshot helper: open the hub straight to a specific tab.</summary>
+        public void OpenTo(string page)
+        {
+            Open();
+            if (!string.IsNullOrEmpty(page)) ShowPage(page);
+        }
+
         public void Close()
         {
             if (root == null) return;
@@ -127,12 +165,25 @@ namespace Emberwake
         void ShowPage(string id)
         {
             page = id;
+            bool showXp = id == "level";
+            if (xpBarBg != null) xpBarBg.gameObject.SetActive(showXp);
+            if (showXp)
+            {
+                var lv = LevelingSystem.Instance;
+                if (xpFill != null) xpFill.fillAmount = lv != null ? Mathf.Clamp01(lv.XpNormalized) : 0f;
+                if (xpBarLabel != null) xpBarLabel.text = lv != null ? $"{lv.Xp} / {lv.XpToNext} XP" : "";
+            }
             switch (id)
             {
                 case "character":
                     titleLabel.text = "KARAKTER";
                     iconImage.sprite = GeneratedArt.PortraitKael();
                     bodyLabel.text = CharacterText();
+                    break;
+                case "items":
+                    titleLabel.text = "BARANG";
+                    iconImage.sprite = GeneratedArt.IconPouch();
+                    bodyLabel.text = ItemsText();
                     break;
                 case "level":
                     titleLabel.text = "LEVELING";
@@ -158,7 +209,7 @@ namespace Emberwake
                 default:
                     titleLabel.text = "EMBERWAKE";
                     iconImage.sprite = GeneratedArt.IconWick();
-                    bodyLabel.text = "Pilih tab di bawah:\n\n• Karakter — status Kael\n• Level — XP & rank\n• Quest — main & side\n• Bestiar — musuh terungkap\n• Save — simpan perjalanan\n\nWick menunggu. Jangan biarkan padam.";
+                    bodyLabel.text = HomeText();
                     break;
             }
         }
@@ -169,6 +220,25 @@ namespace Emberwake
             var player = FindFirstObjectByType<PlayerController>();
             save?.SaveFromManagers(player != null ? player.transform : null);
             PortraitMobileHud.Instance?.ShowToast("Game tersimpan");
+        }
+
+        static string HomeText()
+        {
+            var s = GameManager.Instance?.Stats;
+            var w = GameManager.Instance?.WickRank;
+            var lv = LevelingSystem.Instance;
+            string status = s != null
+                ? $"Kael — Penjaga Wick\nHP {s.Hearts}/{s.MaxHearts}   ·   Lv {(lv != null ? lv.Level : 1)}   ·   Wick {(w != null ? w.Rank : 1)}\n\n"
+                : "";
+            return status +
+                   "Pilih tab di bawah:\n\n" +
+                   "• Karakter — status & kisah Kael\n" +
+                   "• Level — XP & Wick rank\n" +
+                   "• Quest — misi utama & sampingan\n" +
+                   "• Barang — item, emas & equipment\n" +
+                   "• Bestiar — musuh yang terungkap\n" +
+                   "• Save — simpan perjalanan\n\n" +
+                   "Wick menunggu. Jangan biarkan padam.";
         }
 
         static string CharacterText()
@@ -186,14 +256,59 @@ namespace Emberwake
                    "\"Aku tidak ingat tujuh tahun itu.\nHanya nyala Wick yang mengenaliku.\"";
         }
 
+        static string KeyItemName(KeyItemId id) => id switch
+        {
+            KeyItemId.GlovesOfLift => "Gloves of Lift",
+            KeyItemId.TideBow => "Tide Bow",
+            KeyItemId.MirageShield => "Mirage Shield",
+            KeyItemId.Ashbrand => "Ashbrand",
+            KeyItemId.EchoLantern => "Echo Lantern",
+            KeyItemId.KingsSigil => "King's Sigil",
+            KeyItemId.Heartwick => "Heartwick",
+            _ => "—"
+        };
+
+        static readonly KeyItemId[] KeyItemOrder =
+        {
+            KeyItemId.GlovesOfLift, KeyItemId.TideBow, KeyItemId.MirageShield,
+            KeyItemId.Ashbrand, KeyItemId.EchoLantern, KeyItemId.KingsSigil, KeyItemId.Heartwick
+        };
+
+        static string ItemsText()
+        {
+            var inv = GameManager.Instance?.Inventory;
+            if (inv == null) return "Inventaris belum siap.";
+            var sb = new StringBuilder();
+            string sword = inv.HasKeyItem(KeyItemId.Ashbrand) ? "Ashbrand" : "Pedang Latihan";
+            string bow = inv.HasKeyItem(KeyItemId.TideBow) ? "Tide Bow" : "—";
+            string shield = inv.HasKeyItem(KeyItemId.MirageShield) ? "Mirage Shield" : "—";
+            string lantern = inv.LanternTier >= 3 ? "Heartwick"
+                : inv.LanternTier >= 2 ? "Echo Lantern" : "Wick Lentera";
+            sb.AppendLine("══ EQUIPMENT ══");
+            sb.AppendLine($"Pedang     {sword}  (T{inv.SwordTier})");
+            sb.AppendLine($"Busur      {bow}  (T{inv.BowTier})");
+            sb.AppendLine($"Perisai    {shield}  (T{inv.ShieldTier})");
+            sb.AppendLine($"Lentera    {lantern}  (T{inv.LanternTier})");
+            sb.AppendLine();
+            sb.AppendLine("══ KANTONG ══");
+            sb.AppendLine($"Emas          {inv.Gold}");
+            sb.AppendLine($"Heart Drop    {inv.HeartDrops}");
+            sb.AppendLine($"Wick Oil      {inv.WickOil}");
+            sb.AppendLine($"Ash Salt      {inv.AshSalt}");
+            sb.AppendLine();
+            sb.AppendLine("══ KEY ITEM ══");
+            foreach (var id in KeyItemOrder)
+                sb.AppendLine(inv.HasKeyItem(id) ? $"✓ {KeyItemName(id)}" : "• ??? (belum ditemukan)");
+            return sb.ToString();
+        }
+
         static string LevelText()
         {
             var lv = LevelingSystem.Instance;
             var w = GameManager.Instance?.WickRank;
             if (lv == null) return "Leveling belum siap.";
-            int bar = Mathf.RoundToInt(lv.XpNormalized * 12f);
-            string meter = new string('█', bar) + new string('░', 12 - bar);
-            return $"Level {lv.Level}\nXP  {lv.Xp}/{lv.XpToNext}\n[{meter}]\n\n" +
+            // XP meter is drawn as a graphical bar (xpBarBg); leave blank lines for it.
+            return $"Level {lv.Level}\n\n\n\n" +
                    $"Wick Rank {w?.Rank ?? 1} · Essence ke next: {w?.EssenceToNext ?? 0}\n\n" +
                    "Setiap 3 level: +1 Heart Container\nSetiap level: +Sword & Stamina\n\nBunuh musuh, selesaikan quest,\nnyalakan Wick — naik level.";
         }

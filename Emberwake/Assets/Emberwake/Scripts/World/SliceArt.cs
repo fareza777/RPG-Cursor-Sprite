@@ -143,9 +143,37 @@ namespace Emberwake
             return Torch(0);
         }
 
+        static Sprite plateSprite;
         public static Sprite Plate()
         {
-            return GroundTile(3);
+            if (plateSprite != null) return plateSprite;
+            const int s = 32;
+            var tex = new Texture2D(s, s, TextureFormat.RGBA32, false);
+            tex.filterMode = FilterMode.Point;
+            var px = new Color[s * s];
+            Color rim = new Color(0.62f, 0.6f, 0.66f);
+            Color rimHi = new Color(0.78f, 0.78f, 0.85f);
+            Color fill = new Color(0.34f, 0.33f, 0.4f);
+            Color glow = new Color(0.95f, 0.72f, 0.35f);
+            float c = (s - 1) * 0.5f;
+            for (int y = 0; y < s; y++)
+            for (int x = 0; x < s; x++)
+            {
+                float dx = (x - c), dy = (y - c);
+                float d = Mathf.Max(Mathf.Abs(dx), Mathf.Abs(dy)); // square-ish
+                float rad = Mathf.Sqrt(dx * dx + dy * dy);
+                Color col;
+                if (d > 14.5f) col = Color.clear;
+                else if (d > 12f) col = (y > c) ? rimHi : rim;          // beveled outer rim
+                else if (d > 10f) col = fill * 0.8f;                    // groove
+                else col = fill;                                        // plate face
+                if (rad < 3.2f) col = Color.Lerp(fill, glow, 0.6f);    // center indicator
+                px[y * s + x] = col;
+            }
+            tex.SetPixels(px);
+            tex.Apply(false, false);
+            plateSprite = Sprite.Create(tex, new Rect(0, 0, s, s), new Vector2(0.5f, 0.5f), s);
+            return plateSprite;
         }
 
         public static Sprite Gloves()
@@ -322,25 +350,154 @@ namespace Emberwake
 
         static Sprite MakeStoneTile(int seed)
         {
-            Color baseCol = new Color(0.4f, 0.4f, 0.46f);
-            Color dark = new Color(0.28f, 0.28f, 0.34f);
-            Color light = new Color(0.55f, 0.55f, 0.6f);
+            // Tidy domed flagstones: mortar seams + a soft bevel that reads the same
+            // even when the tile is mirrored (tiles get random x/y flips when placed).
+            Color center = new Color(0.44f, 0.44f, 0.50f);
+            Color edge = new Color(0.30f, 0.30f, 0.36f);
+            Color mortar = new Color(0.21f, 0.21f, 0.27f);
             const int size = 32;
+            const int cell = 16;          // two flagstones per axis
             var tex = new Texture2D(size, size, TextureFormat.RGBA32, false);
             tex.filterMode = FilterMode.Point;
             var px = new Color[size * size];
             for (int y = 0; y < size; y++)
             for (int x = 0; x < size; x++)
             {
-                int h = Hash(x, y, seed + 90);
-                bool seam = (x % 8) == 0 || (y % 8) == 0;
-                float n = (h & 0xFF) / 255f;
-                Color c = seam ? dark : (n < 0.3f ? dark : (n > 0.75f ? light : baseCol));
+                int bx = x / cell, by = y / cell;
+                int cx = x % cell, cy = y % cell;
+                float ncx = (cx + 0.5f) / cell - 0.5f;
+                float ncy = (cy + 0.5f) / cell - 0.5f;
+                float e = Mathf.Max(Mathf.Abs(ncx), Mathf.Abs(ncy)) * 2f;   // 0 center .. 1 edge
+                int bh = Hash(bx, by, seed + 90);
+                float tone = ((bh & 0xFF) / 255f - 0.5f) * 0.08f;           // per-stone variation
+                Color c;
+                if (e > 0.9f) c = mortar;                                    // groove between stones
+                else c = Color.Lerp(center, edge, e / 0.9f) + new Color(tone, tone, tone);
+                if (e <= 0.9f)
+                {
+                    int h = Hash(x, y, seed + 5);
+                    float n = (h & 0xFF) / 255f;
+                    if (n > 0.95f) c = Color.Lerp(c, center, 0.4f);          // faint fleck
+                    else if (n < 0.05f) c = Color.Lerp(c, mortar, 0.35f);    // faint pit
+                }
                 px[y * size + x] = c;
             }
             tex.SetPixels(px);
             tex.Apply(false, false);
             return Sprite.Create(tex, new Rect(0, 0, size, size), new Vector2(0.5f, 0.5f), size);
+        }
+
+        static Sprite[] tufts;
+        static Sprite[] flowers;
+
+        public static Sprite Tuft(int i)
+        {
+            if (tufts == null)
+                tufts = new[] { MakeTuft(1), MakeTuft(2), MakeTuft(3), MakeTuft(4) };
+            return tufts[Mathf.Abs(i) % tufts.Length];
+        }
+
+        public static Sprite Flower(int i)
+        {
+            if (flowers == null)
+                flowers = new[] { MakeFlower(1), MakeFlower(2), MakeFlower(3) };
+            return flowers[Mathf.Abs(i) % flowers.Length];
+        }
+
+        static Sprite MakeTuft(int seed)
+        {
+            const int size = 16;
+            var tex = new Texture2D(size, size, TextureFormat.RGBA32, false);
+            tex.filterMode = FilterMode.Point;
+            var px = new Color[size * size];
+            for (int i = 0; i < px.Length; i++) px[i] = Color.clear;
+            Color[] shades =
+            {
+                new Color(0.24f, 0.5f, 0.2f), new Color(0.32f, 0.62f, 0.26f),
+                new Color(0.4f, 0.7f, 0.3f)
+            };
+            int blades = 4 + (Hash(seed, 7, 3) & 3);
+            for (int b = 0; b < blades; b++)
+            {
+                int h = Hash(b, seed, seed + 5);
+                int bx = 3 + (Mathf.Abs(h) % (size - 6));
+                int height = 5 + (Mathf.Abs(h >> 4) % 7);
+                float lean = ((h >> 8) & 3) - 1.5f;
+                var col = shades[Mathf.Abs(h >> 12) % shades.Length];
+                for (int yy = 0; yy < height; yy++)
+                {
+                    int cx = Mathf.Clamp(bx + Mathf.RoundToInt(lean * yy / height), 0, size - 1);
+                    int y = yy; // grow from bottom
+                    px[y * size + cx] = col;
+                    if (yy < height - 1 && cx + 1 < size) px[y * size + cx + 1] = col * 0.9f;
+                }
+            }
+            tex.SetPixels(px);
+            tex.Apply(false, false);
+            return Sprite.Create(tex, new Rect(0, 0, size, size), new Vector2(0.5f, 0.15f), size);
+        }
+
+        static Sprite[] pebbles;
+        public static Sprite Pebble(int i)
+        {
+            if (pebbles == null)
+                pebbles = new[] { MakePebble(1), MakePebble(2), MakePebble(3) };
+            return pebbles[Mathf.Abs(i) % pebbles.Length];
+        }
+
+        static Sprite MakePebble(int seed)
+        {
+            const int size = 12;
+            var tex = new Texture2D(size, size, TextureFormat.RGBA32, false);
+            tex.filterMode = FilterMode.Point;
+            var px = new Color[size * size];
+            for (int i = 0; i < px.Length; i++) px[i] = Color.clear;
+            Color baseCol = (seed % 2 == 0)
+                ? new Color(0.5f, 0.47f, 0.42f)
+                : new Color(0.58f, 0.5f, 0.4f);
+            Color hi = baseCol * 1.25f;
+            Color lo = baseCol * 0.7f;
+            float cx = size * 0.5f, cy = size * 0.45f;
+            float rx = 3.2f + (Hash(seed, 1, 2) & 1), ry = 2.2f + (Hash(seed, 3, 4) & 1);
+            for (int y = 0; y < size; y++)
+            for (int x = 0; x < size; x++)
+            {
+                float dx = (x - cx) / rx, dy = (y - cy) / ry;
+                if (dx * dx + dy * dy <= 1f)
+                    px[y * size + x] = (y - cy) > 0.3f ? hi : ((y - cy) < -0.6f ? lo : baseCol);
+            }
+            tex.SetPixels(px);
+            tex.Apply(false, false);
+            return Sprite.Create(tex, new Rect(0, 0, size, size), new Vector2(0.5f, 0.4f), size);
+        }
+
+        static Sprite MakeFlower(int seed)
+        {
+            const int size = 16;
+            var tex = new Texture2D(size, size, TextureFormat.RGBA32, false);
+            tex.filterMode = FilterMode.Point;
+            var px = new Color[size * size];
+            for (int i = 0; i < px.Length; i++) px[i] = Color.clear;
+            Color stem = new Color(0.28f, 0.55f, 0.24f);
+            Color[] petalSet =
+            {
+                new Color(1f, 0.85f, 0.35f), new Color(0.95f, 0.5f, 0.55f),
+                new Color(0.75f, 0.7f, 1f), new Color(1f, 0.95f, 0.95f)
+            };
+            Color petal = petalSet[Mathf.Abs(Hash(seed, 2, 9)) % petalSet.Length];
+            Color core = new Color(1f, 0.8f, 0.2f);
+            int cx = size / 2, stemH = 6 + (Hash(seed, 3, 1) & 3);
+            for (int y = 0; y < stemH; y++) px[y * size + cx] = stem;
+            int fy = stemH + 2;
+            // 4-petal bloom + core
+            void Set(int x, int y, Color c) { if (x >= 0 && x < size && y >= 0 && y < size) px[y * size + x] = c; }
+            Set(cx, fy, core);
+            Set(cx - 1, fy, petal); Set(cx + 1, fy, petal);
+            Set(cx, fy - 1, petal); Set(cx, fy + 1, petal);
+            Set(cx - 1, fy - 1, petal * 0.92f); Set(cx + 1, fy + 1, petal * 0.92f);
+            tex.SetPixels(px);
+            tex.Apply(false, false);
+            return Sprite.Create(tex, new Rect(0, 0, size, size), new Vector2(0.5f, 0.15f), size);
         }
 
         static int Hash(int x, int y, int seed)

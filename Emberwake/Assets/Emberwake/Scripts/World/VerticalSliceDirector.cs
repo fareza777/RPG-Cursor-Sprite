@@ -98,6 +98,7 @@ namespace Emberwake
             SliceArt.LogStatusOnce();
             EnsureSpriteMaterial();
             BuildManagers();
+            HookProgressionFeedback();
             if (FindFirstObjectByType<FeelFeedback>() == null)
                 new GameObject("FeelFeedback").AddComponent<FeelFeedback>();
             if (AudioDirector.Instance == null)
@@ -157,6 +158,37 @@ namespace Emberwake
 
         public void SetPlayerFrozenPublic(bool frozen) => SetPlayerFrozen(frozen);
 
+        /// <summary>QA/screenshot helper: jump straight to a room by index and show it.</summary>
+        public void QaShowRoom(int idx)
+        {
+            gameplayActive = true;
+            LoadRoom((RoomId)Mathf.Clamp(idx, 0, (int)RoomId.Altar));
+            SetPlayerFrozen(true);
+            PortraitMobileHud.Instance?.SetControlsVisible(true);
+        }
+
+        /// <summary>QA/screenshot helper: show the end-of-slice CLEAR overlay directly.</summary>
+        public void QaShowClear()
+        {
+            gameplayActive = true;
+            LoadRoom(RoomId.Altar);
+            DialogBox.Instance?.ForceClose();
+            cleared = true;
+            SetObjective("SLICE CLEAR");
+            BuildClearOverlay();
+        }
+
+        /// <summary>QA/screenshot helper: show the boss arena with the Barkling spawned (skips intro dialog).</summary>
+        public void QaShowBoss()
+        {
+            gameplayActive = true;
+            LoadRoom(RoomId.Boss);
+            DialogBox.Instance?.ForceClose();
+            SpawnBarkling(new Vector2(0f, 3f));
+            SpawnEnemy("hollow_knight", new Vector2(-3f, 1f), 8f, 1.05f);
+            SetPlayerFrozen(true);
+        }
+
         void SetPlayerFrozen(bool frozen)
         {
             if (player == null) return;
@@ -190,6 +222,39 @@ namespace Emberwake
             if (sr == null) return;
             EnsureSpriteMaterial();
             if (spriteMat != null) sr.sharedMaterial = spriteMat;
+        }
+
+        void AutoSave()
+        {
+            var save = FindFirstObjectByType<SaveSystem>();
+            save?.SaveFromManagers(player);
+        }
+
+        void HookProgressionFeedback()
+        {
+            if (LevelingSystem.Instance != null)
+            {
+                LevelingSystem.Instance.OnLevelUp += lvl =>
+                {
+                    ShowToast($"LEVEL UP!  Lv {lvl}");
+                    FeelFeedback.Shake(0.12f, 0.16f);
+                    AudioDirector.Instance?.PlayQuest();
+                    if (player != null)
+                        CombatVfx.Burst(player.position, new Color(1f, 0.9f, 0.5f));
+                };
+            }
+            var w = GameManager.Instance?.WickRank;
+            if (w != null)
+            {
+                w.OnRankUp += rank =>
+                {
+                    ShowToast($"WICK RANK {rank}!  Nyala Kael menguat.");
+                    FeelFeedback.Shake(0.15f, 0.2f);
+                    AudioDirector.Instance?.PlayQuest();
+                    if (player != null)
+                        CombatVfx.Burst(player.position, new Color(1f, 0.7f, 0.3f));
+                };
+            }
         }
 
         void BuildManagers()
@@ -229,6 +294,10 @@ namespace Emberwake
             Paint(sr);
             visual.transform.localScale = Vector3.one * 1.05f;
             GroundShadow.Attach(p.transform, 1.0f);
+            // Kael carries the last Wick — a soft ember aura follows him.
+            if (!EmulatorAutoQa.Lite)
+                AttachGlow(p.transform, new Vector2(0f, 0.1f), 1.9f,
+                    new Color(1f, 0.72f, 0.36f, 0.32f), 18, 2.8f, 0.14f);
 
             // Controller BEFORE HeroVisual so Awake can bind (also re-binds in Start)
             p.AddComponent<Health>();
@@ -309,14 +378,16 @@ namespace Emberwake
             cam.orthographic = true;
             cam.orthographicSize = CamOrtho;
             cam.clearFlags = CameraClearFlags.SolidColor;
-            cam.backgroundColor = new Color(0.18f, 0.42f, 0.24f);
+            cam.backgroundColor = new Color(0.05f, 0.07f, 0.08f);
             cam.allowHDR = false;
             cam.allowMSAA = false;
             cam.nearClipPlane = -10f;
             cam.farClipPlane = 100f;
 
-            // Global 2D light so sprites aren't lit black by URP 2D
-            if (FindFirstObjectByType<Light2D>() == null)
+            // Global 2D light so sprites aren't lit black by URP 2D. Sprites are Unlit
+            // so this is cosmetically inert; skip it in QA-lite to drop the expensive
+            // per-frame 2D light pass on the headless software renderer.
+            if (!EmulatorAutoQa.Lite && FindFirstObjectByType<Light2D>() == null)
             {
                 var lightGo = new GameObject("SR_GlobalLight");
                 var light = lightGo.AddComponent<Light2D>();
@@ -408,6 +479,7 @@ namespace Emberwake
         {
             room = id;
             ClearWorldProps();
+            if (gameplayActive) AutoSave();
             roomCenter = Vector2.zero;
             player.position = new Vector3(0f, -2.2f, 0f);
 
@@ -424,8 +496,8 @@ namespace Emberwake
             BuildFloor(floorKey);
             BuildWalls();
             DecorateRoom(id);
-            if (id == RoomId.Hub || id == RoomId.Boss || id == RoomId.Altar)
-                EmberParticles.Attach(transform, id == RoomId.Boss ? 28 : 16);
+            if ((id == RoomId.Hub || id == RoomId.Boss || id == RoomId.Altar) && !EmulatorAutoQa.Lite)
+                EmberParticles.Attach(transform, id == RoomId.Boss ? 34 : 24);
             // Lock camera so view stays mostly on floor
             float halfH = CamOrtho;
             float halfW = halfH * (9f / 16f);
@@ -511,13 +583,10 @@ namespace Emberwake
                     }
                     else
                     {
-                        SpawnBarkling(new Vector2(0f, 3f));
-                        SpawnEnemy("hollow_knight", new Vector2(-3f, 1f), 8f, 1.05f);
                         SetObjective("Kalahkan Barkling!");
-                        ShowToast("Barkling Nest — hati-hati slam!");
                         AudioDirector.Instance?.SetMusicMood("boss");
-                        AudioDirector.Instance?.PlayBoss();
                         QuestSystem.Instance?.Discover("main_barkling");
+                        StartBossFight();
                     }
                     QuestSystem.Instance?.AddProgress("side_explore");
                     break;
@@ -581,6 +650,33 @@ namespace Emberwake
             SpawnExitTrigger(new Vector2(0f, roomSize.y * 0.42f), () => LoadRoom(RoomId.Boss));
         }
 
+        void StartBossFight()
+        {
+            void Begin()
+            {
+                if (room != RoomId.Boss) return;
+                SpawnBarkling(new Vector2(0f, 3f));
+                SpawnEnemy("hollow_knight", new Vector2(-3f, 1f), 8f, 1.05f);
+                AudioDirector.Instance?.PlayBoss();
+                ShowToast("Barkling Nest — awas SLAM! Menghindar saat cincin merah muncul.");
+                FeelFeedback.Shake(0.25f, 0.3f);
+                SetPlayerFrozen(false);
+            }
+
+            if (DialogBox.Instance != null)
+            {
+                SetPlayerFrozen(true);
+                DialogBox.Instance.Play(new[]
+                {
+                    new DialogLine("Barkling", "…GRRAA. Daging kecil… membawa nyala curian."),
+                    new DialogLine("Kael", "Wick ini milik Millbrook. Menyingkir dari akarnya."),
+                    new DialogLine("Barkling", "Akar Ashdeep akan mencekik apimu sampai gelap."),
+                    new DialogLine("Sera", "Kael — dengar hentakannya. Menghindarlah saat tanah merah menyala!")
+                }, Begin);
+            }
+            else Begin();
+        }
+
         void OnBossDefeated()
         {
             if (bossDead) return;
@@ -588,9 +684,26 @@ namespace Emberwake
             GameManager.Instance?.WickRank.AddEssence(80);
             LevelingSystem.Instance?.AddXp(80);
             QuestSystem.Instance?.Complete("main_barkling");
-            ShowToast("Barkling tumbang!");
+            FeelFeedback.Shake(0.4f, 0.5f);
             SetObjective("Ke altar Wick");
-            SpawnExitTrigger(new Vector2(0f, roomSize.y * 0.42f), () => LoadRoom(RoomId.Altar));
+            if (DialogBox.Instance != null)
+            {
+                DialogBox.Instance.Play(new[]
+                {
+                    new DialogLine("Barkling", "…akar… padam… dingin…"),
+                    new DialogLine("Kael", "Tidur, penjaga tua. Hutan akan bernafas lagi."),
+                    new DialogLine("Sera", "Kau berhasil. Wick Hollowroot menyala — bawa pulang cahayanya.")
+                }, () =>
+                {
+                    ShowToast("Barkling tumbang! Altar Wick di utara.");
+                    SpawnExitTrigger(new Vector2(0f, roomSize.y * 0.42f), () => LoadRoom(RoomId.Altar));
+                });
+            }
+            else
+            {
+                ShowToast("Barkling tumbang!");
+                SpawnExitTrigger(new Vector2(0f, roomSize.y * 0.42f), () => LoadRoom(RoomId.Altar));
+            }
         }
 
         void OnAltarTouched()
@@ -611,6 +724,7 @@ namespace Emberwake
         {
             var canvas = FindFirstObjectByType<Canvas>();
             if (canvas == null) return;
+
             var panel = new GameObject("ClearPanel", typeof(RectTransform), typeof(CanvasRenderer), typeof(Image));
             panel.transform.SetParent(canvas.transform, false);
             var rt = (RectTransform)panel.transform;
@@ -619,18 +733,88 @@ namespace Emberwake
             rt.offsetMin = rt.offsetMax = Vector2.zero;
             var img = panel.GetComponent<Image>();
             img.sprite = UiArt.SoftPanel();
-            img.color = new Color(0f, 0f, 0f, 0.78f);
+            img.color = new Color(0.02f, 0.02f, 0.05f, 0.86f);
             img.raycastTarget = true;
 
-            var go = new GameObject("ClearLabel", typeof(RectTransform), typeof(CanvasRenderer), typeof(Text));
-            go.transform.SetParent(panel.transform, false);
-            var lrt = (RectTransform)go.transform;
-            lrt.anchorMin = new Vector2(0.1f, 0.25f);
-            lrt.anchorMax = new Vector2(0.9f, 0.75f);
-            lrt.offsetMin = lrt.offsetMax = Vector2.zero;
-            var label = go.GetComponent<Text>();
-            UiArt.StyleLabel(label, 44, new Color(1f, 0.85f, 0.4f));
-            label.text = $"EMBERWAKE\nSLICE CLEAR\n{runTimer:0} detik\n\nTerima kasih playtest!";
+            // Ember-gold framed card.
+            var frame = ClearImage(panel.transform, new Vector2(0.5f, 0.5f), new Vector2(760f, 1000f),
+                new Color(0.85f, 0.55f, 0.2f, 0.95f));
+            var card = ClearImage(frame.transform, new Vector2(0.5f, 0.5f), new Vector2(740f, 980f),
+                new Color(0.08f, 0.06f, 0.11f, 0.98f));
+
+            ClearText(card.transform, new Vector2(0.5f, 0.9f), new Vector2(680f, 120f),
+                "EMBERWAKE", 74, new Color(1f, 0.8f, 0.32f), FontStyle.Bold);
+            ClearText(card.transform, new Vector2(0.5f, 0.8f), new Vector2(680f, 60f),
+                "— SLICE CLEAR —", 34, new Color(1f, 0.9f, 0.6f), FontStyle.Bold);
+
+            int lv = LevelingSystem.Instance != null ? LevelingSystem.Instance.Level : 1;
+            var wick = GameManager.Instance != null ? GameManager.Instance.WickRank : null;
+            var inv = GameManager.Instance != null ? GameManager.Instance.Inventory : null;
+            string stats =
+                $"Waktu bertahan   {runTimer:0} detik\n\n" +
+                $"Level Kael       {lv}\n\n" +
+                $"Wick Rank        {(wick != null ? wick.Rank : 1)}\n\n" +
+                $"Essence          {(wick != null ? wick.Essence : 0)}\n\n" +
+                $"Emas             {(inv != null ? inv.Gold : 0)}";
+            ClearText(card.transform, new Vector2(0.5f, 0.5f), new Vector2(600f, 420f),
+                stats, 30, new Color(0.94f, 0.92f, 0.86f), FontStyle.Bold);
+
+            ClearText(card.transform, new Vector2(0.5f, 0.2f), new Vector2(660f, 90f),
+                "Wick Millbrook menyala kembali.\nVirelia mengingat namanya.", 26,
+                new Color(0.8f, 0.78f, 0.7f), FontStyle.Normal);
+
+            // Restart button.
+            var btnFrame = ClearImage(card.transform, new Vector2(0.5f, 0.08f), new Vector2(400f, 104f),
+                new Color(1f, 0.85f, 0.45f, 1f));
+            var btnGo = ClearImage(btnFrame.transform, new Vector2(0.5f, 0.5f), new Vector2(388f, 92f),
+                new Color(0.82f, 0.42f, 0.1f, 1f));
+            btnGo.raycastTarget = true;
+            ClearText(btnGo.transform, new Vector2(0.5f, 0.5f), new Vector2(360f, 70f),
+                "MAIN LAGI", 36, Color.white, FontStyle.Bold);
+            var btn = btnGo.gameObject.AddComponent<Button>();
+            btn.onClick.AddListener(() =>
+            {
+                AudioDirector.Instance?.PlayStart();
+                Time.timeScale = 1f;
+                SaveSystem.ClearContinue();
+                var scene = UnityEngine.SceneManagement.SceneManager.GetActiveScene();
+                UnityEngine.SceneManagement.SceneManager.LoadScene(scene.buildIndex);
+            });
+        }
+
+        static Image ClearImage(Transform parent, Vector2 anchor, Vector2 size, Color color)
+        {
+            var go = new GameObject("CImg", typeof(RectTransform), typeof(CanvasRenderer), typeof(Image));
+            go.transform.SetParent(parent, false);
+            var rt = go.GetComponent<RectTransform>();
+            rt.anchorMin = rt.anchorMax = anchor;
+            rt.pivot = new Vector2(0.5f, 0.5f);
+            rt.sizeDelta = size;
+            rt.anchoredPosition = Vector2.zero;
+            var img = go.GetComponent<Image>();
+            img.sprite = UiArt.SoftPanel();
+            img.type = Image.Type.Sliced;
+            img.color = color;
+            img.raycastTarget = false;
+            return img;
+        }
+
+        static Text ClearText(Transform parent, Vector2 anchor, Vector2 size, string content,
+            int fontSize, Color color, FontStyle style)
+        {
+            var go = new GameObject("CTxt", typeof(RectTransform), typeof(CanvasRenderer), typeof(Text));
+            go.transform.SetParent(parent, false);
+            var rt = go.GetComponent<RectTransform>();
+            rt.anchorMin = rt.anchorMax = anchor;
+            rt.pivot = new Vector2(0.5f, 0.5f);
+            rt.sizeDelta = size;
+            rt.anchoredPosition = Vector2.zero;
+            var t = go.GetComponent<Text>();
+            UiArt.StyleLabel(t, fontSize, color, style);
+            t.alignment = TextAnchor.MiddleCenter;
+            t.text = content;
+            t.raycastTarget = false;
+            return t;
         }
 
         // ----- spawn helpers -----
@@ -688,6 +872,12 @@ namespace Emberwake
                 }
             }
 
+            if (!EmulatorAutoQa.Lite)
+            {
+                if (!dungeon) ScatterFoliage();
+                ScatterPathDetail(dungeon);
+            }
+
             // Horizon painting only as thin north strip (not walkable floor)
             var bg = SliceArt.FloorBg(roomKey);
             if (bg != null)
@@ -702,6 +892,68 @@ namespace Emberwake
                 float hu = bg.bounds.size.y;
                 if (wu > 0.01f && hu > 0.01f)
                     far.transform.localScale = new Vector3(roomSize.x * 1.5f / wu, 3.2f / hu, 1f);
+            }
+        }
+
+        void ScatterFoliage(int count = 42)
+        {
+            float hx = roomSize.x * 0.5f - 0.8f;
+            float hy = roomSize.y * 0.5f - 1f;
+            for (int i = 0; i < count; i++)
+            {
+                // Keep foliage off the central dirt path (|x| < 2.4).
+                float x = Random.Range(2.4f, hx);
+                if (Random.value < 0.5f) x = -x;
+                float y = Random.Range(-hy, hy);
+                bool flower = Random.value < 0.28f;
+                var go = new GameObject("SR_Foliage");
+                go.transform.position = (Vector3)(roomCenter + new Vector2(x, y));
+                var sr = go.AddComponent<SpriteRenderer>();
+                sr.sprite = flower ? SliceArt.Flower(i) : SliceArt.Tuft(i);
+                Paint(sr);
+                sr.sortingOrder = -40;
+                float sc = Random.Range(0.9f, 1.45f);
+                go.transform.localScale = new Vector3((Random.value < 0.5f ? -sc : sc), sc, 1f);
+                sr.color = new Color(1f, 1f, 1f, flower ? 1f : Random.Range(0.8f, 1f));
+            }
+
+            // Darker bush treeline hugging the far left/right edges — frames the scene.
+            float edgeX = roomSize.x * 0.5f - 0.4f;
+            for (float y = -hy; y <= hy; y += Random.Range(2.2f, 3.4f))
+            {
+                for (int side = -1; side <= 1; side += 2)
+                {
+                    var b = new GameObject("SR_Bush");
+                    float jx = side * (edgeX - Random.Range(0f, 1.2f));
+                    b.transform.position = (Vector3)(roomCenter + new Vector2(jx, y + Random.Range(-0.6f, 0.6f)));
+                    var bsr = b.AddComponent<SpriteRenderer>();
+                    bsr.sprite = SliceArt.Tuft(Mathf.Abs((int)(y * 3f)) + side);
+                    Paint(bsr);
+                    bsr.sortingOrder = -38;
+                    float bs = Random.Range(2.4f, 3.4f);
+                    b.transform.localScale = new Vector3((side < 0 ? -bs : bs), bs, 1f);
+                    bsr.color = new Color(0.55f, 0.62f, 0.5f, 1f); // darker, cooler foliage
+                }
+            }
+        }
+
+        void ScatterPathDetail(bool dungeon, int count = 18)
+        {
+            float hy = roomSize.y * 0.5f - 1f;
+            // Grass rooms: pebbles hug the central dirt path. Dungeons: scatter widely.
+            for (int i = 0; i < count; i++)
+            {
+                float x = dungeon ? Random.Range(-roomSize.x * 0.5f + 1f, roomSize.x * 0.5f - 1f)
+                                  : Random.Range(-1.9f, 1.9f);
+                float y = Random.Range(-hy, hy);
+                var go = new GameObject("SR_Pebble");
+                go.transform.position = (Vector3)(roomCenter + new Vector2(x, y));
+                var sr = go.AddComponent<SpriteRenderer>();
+                sr.sprite = SliceArt.Pebble(i);
+                Paint(sr);
+                sr.sortingOrder = -45;
+                float sc = Random.Range(0.7f, 1.3f);
+                go.transform.localScale = new Vector3((Random.value < 0.5f ? -sc : sc), sc, 1f);
             }
         }
 
@@ -816,6 +1068,58 @@ namespace Emberwake
             sr.sprite = sprite;
             Paint(sr);
             sr.sortingOrder = order;
+            // Torches are the only props spawned at order 11 — give each a live ember glow.
+            if (order == 11 && !EmulatorAutoQa.Lite)
+            {
+                float fy = 0.45f / Mathf.Max(0.01f, scale);
+                AttachGlow(go.transform, new Vector2(0f, fy), 3.1f,
+                    new Color(1f, 0.55f, 0.18f, 0.7f), 12, 4.2f, 0.3f);
+                // Bright, fast-flickering hot core so the flame reads as live fire.
+                AttachGlow(go.transform, new Vector2(0f, fy), 0.95f,
+                    new Color(1f, 0.92f, 0.6f, 0.85f), 13, 7.5f, 0.34f);
+            }
+        }
+
+        static Sprite glowSprite;
+        static Sprite GlowSprite()
+        {
+            if (glowSprite != null) return glowSprite;
+            int s = 96;
+            var tex = new Texture2D(s, s, TextureFormat.RGBA32, false);
+            tex.filterMode = FilterMode.Bilinear;
+            tex.wrapMode = TextureWrapMode.Clamp;
+            float c = (s - 1) * 0.5f;
+            var px = new Color[s * s];
+            for (int y = 0; y < s; y++)
+            for (int x = 0; x < s; x++)
+            {
+                float d = Vector2.Distance(new Vector2(x, y), new Vector2(c, c)) / c;
+                float a = Mathf.Clamp01(1f - d);
+                a = a * a * (1.1f - 0.3f * d); // soft, bright core
+                px[y * s + x] = new Color(1f, 1f, 1f, Mathf.Clamp01(a));
+            }
+            tex.SetPixels(px);
+            tex.Apply(false, true);
+            glowSprite = Sprite.Create(tex, new Rect(0, 0, s, s), new Vector2(0.5f, 0.5f), s);
+            return glowSprite;
+        }
+
+        /// <summary>Warm, flickering radial glow sprite — the game's signature ember light (unlit-safe).</summary>
+        static void AttachGlow(Transform parent, Vector2 localOffset, float worldRadius,
+            Color color, int order, float flickerSpeed = 3.4f, float flickerAmount = 0.24f)
+        {
+            var glow = new GameObject("SR_Glow");
+            glow.transform.SetParent(parent, false);
+            glow.transform.localPosition = new Vector3(localOffset.x, localOffset.y, 0f);
+            // Parent may be scaled; counter it so radius is in world units.
+            float inv = 1f / Mathf.Max(0.01f, parent.localScale.x);
+            glow.transform.localScale = Vector3.one * (worldRadius * 2f * inv);
+            var gsr = glow.AddComponent<SpriteRenderer>();
+            gsr.sprite = GlowSprite();
+            gsr.color = color;
+            gsr.sortingOrder = order;
+            if (spriteMat != null) gsr.sharedMaterial = spriteMat;
+            glow.AddComponent<GlowFlicker>().Init(gsr, color.a, flickerSpeed, flickerAmount);
         }
 
         void Wall(string name, Vector2 pos, Vector2 size)
@@ -870,6 +1174,15 @@ namespace Emberwake
             }
             else sr.sprite = art;
             Paint(sr);
+            // Subtle per-type tint so enemy kinds read at a glance.
+            sr.color = id switch
+            {
+                "ash_wisp" => new Color(0.7f, 0.9f, 1f),
+                "root_crawler" => new Color(0.75f, 0.95f, 0.7f),
+                "ember_moth" => new Color(1f, 0.8f, 0.55f),
+                "hollow_knight" => new Color(0.8f, 0.82f, 1f),
+                _ => Color.white
+            };
             sr.sortingOrder = 10;
             e.transform.localScale = Vector3.one * scale;
             var rb = e.AddComponent<Rigidbody2D>();
@@ -955,6 +1268,8 @@ namespace Emberwake
             sr.color = new Color(1f, 0.92f, 0.35f, 1f);
             sr.sortingOrder = 16;
             g.transform.localScale = Vector3.one * 1.5f;
+            AttachGlow(g.transform, Vector2.zero, 2.2f,
+                new Color(1f, 0.85f, 0.4f, 0.6f), 15, 1.8f, 0.16f);
             var col = g.AddComponent<CircleCollider2D>();
             col.isTrigger = true;
             col.radius = 0.55f;
@@ -971,10 +1286,10 @@ namespace Emberwake
             var e = new GameObject("SB_Barkling");
             e.transform.position = (Vector3)(roomCenter + localPos);
             var sr = e.AddComponent<SpriteRenderer>();
-            sr.sprite = SliceArt.Boss() != null ? SliceArt.Boss() : GeneratedArt.EnemyArt("barkling");
+            sr.sprite = GeneratedArt.EnemyArt("barkling");
             Paint(sr);
             sr.sortingOrder = 14;
-            e.transform.localScale = Vector3.one * 1.15f;
+            e.transform.localScale = Vector3.one * 1.7f;
             var rb = e.AddComponent<Rigidbody2D>();
             rb.gravityScale = 0f;
             rb.freezeRotation = true;
@@ -998,6 +1313,9 @@ namespace Emberwake
             sr.color = new Color(1f, 0.75f, 0.35f, 1f);
             sr.sortingOrder = 16;
             a.transform.localScale = Vector3.one * 1.9f;
+            if (!EmulatorAutoQa.Lite)
+                AttachGlow(a.transform, new Vector2(0f, 0.2f), 4.6f,
+                    new Color(1f, 0.68f, 0.28f, 0.62f), 15, 2.4f, 0.2f);
             var col = a.AddComponent<CircleCollider2D>();
             col.isTrigger = true;
             var t = a.AddComponent<SliceTrigger>();
@@ -1037,43 +1355,213 @@ namespace Emberwake
         }
     }
 
+    /// <summary>
+    /// Barkling boss: roams (via EnemyChaser) then performs a telegraphed slam —
+    /// windup warning ring → shockwave + screenshake + AoE — and enrages at low HP.
+    /// </summary>
     public class BarklingBoss : MonoBehaviour
     {
+        enum St { Roam, Windup, Slam, Recover }
+
         System.Action onDead;
         Health health;
-        float slamTimer = 2.5f;
+        Transform player;
+        Health playerHp;
+        EnemyChaser chaser;
+        SpriteRenderer sr;
+        Color baseColor = Color.white;
+        GameObject ring;
+        St state = St.Roam;
+        float stateT;
+        float slamCd = 2.6f;
+        float windup = 0.75f;
+        float slamRadius = 2.5f;
         bool dead;
+        bool enraged;
+
+        static Sprite softCircle;
 
         public void Init(System.Action cb) => onDead = cb;
 
         void Awake()
         {
             health = GetComponent<Health>();
+            chaser = GetComponent<EnemyChaser>();
+            sr = GetComponent<SpriteRenderer>();
+            if (sr != null) baseColor = sr.color;
             if (health != null) health.OnDied += HandleDead;
+        }
+
+        void Start() => Resolve();
+
+        void Resolve()
+        {
+            var p = FindFirstObjectByType<PlayerController>();
+            if (p == null) return;
+            player = p.transform;
+            playerHp = p.GetComponent<Health>();
         }
 
         void Update()
         {
-            slamTimer -= Time.deltaTime;
-            if (slamTimer > 0f) return;
-            slamTimer = 2.8f;
-            // telegraph: flash + AoE damage near boss
-            var player = FindFirstObjectByType<PlayerController>();
-            if (player == null) return;
-            if (Vector2.Distance(transform.position, player.transform.position) < 1.6f)
+            if (dead) return;
+            if (player == null) { Resolve(); if (player == null) return; }
+            float dt = Time.deltaTime;
+            stateT += dt;
+
+            if (!enraged && health != null && health.Hp <= health.MaxHp * 0.4f)
             {
-                var h = player.GetComponent<Health>();
-                h?.TakeDamage(1f, transform.position);
+                enraged = true;
+                slamCd = 1.5f;
+                windup = 0.6f;
+                slamRadius = 3.0f;
+                baseColor = new Color(1f, 0.6f, 0.5f);
             }
-            var sr = GetComponent<SpriteRenderer>();
-            if (sr != null) sr.color = Color.white;
+
+            float dist = Vector2.Distance(transform.position, player.position);
+
+            switch (state)
+            {
+                case St.Roam:
+                    if (sr != null) sr.color = baseColor;
+                    if (stateT >= slamCd && dist < 3.6f)
+                    {
+                        state = St.Windup;
+                        stateT = 0f;
+                        if (chaser != null) chaser.enabled = false;
+                        SpawnRing();
+                        AudioDirector.Instance?.PlayUi();
+                    }
+                    break;
+
+                case St.Windup:
+                    // Freeze + pulse red to telegraph the incoming slam.
+                    var rb = GetComponent<Rigidbody2D>();
+                    if (rb != null) rb.linearVelocity = Vector2.zero;
+                    float k = Mathf.PingPong(stateT * 9f, 1f);
+                    if (sr != null) sr.color = Color.Lerp(baseColor, new Color(1f, 0.35f, 0.15f), k);
+                    if (ring != null)
+                    {
+                        float g = Mathf.Clamp01(stateT / windup);
+                        ring.transform.localScale = Vector3.one * (slamRadius * 2f * g);
+                        var rs = ring.GetComponent<SpriteRenderer>();
+                        if (rs != null) rs.color = new Color(1f, 0.35f, 0.12f, 0.15f + 0.4f * g);
+                    }
+                    if (stateT >= windup) DoSlam();
+                    break;
+
+                case St.Slam:
+                    if (stateT >= 0.14f) { state = St.Recover; stateT = 0f; }
+                    break;
+
+                case St.Recover:
+                    if (sr != null) sr.color = baseColor;
+                    if (stateT >= 0.55f)
+                    {
+                        state = St.Roam;
+                        stateT = 0f;
+                        if (chaser != null) chaser.enabled = true;
+                    }
+                    break;
+            }
+        }
+
+        void DoSlam()
+        {
+            state = St.Slam;
+            stateT = 0f;
+            if (ring != null) { Destroy(ring); ring = null; }
+            FeelFeedback.Shake(enraged ? 0.42f : 0.32f, 0.28f);
+            FeelFeedback.HitStop(0.05f);
+            AudioDirector.Instance?.PlayBoss();
+            SpawnShockwave(slamRadius);
+            if (playerHp != null && !playerHp.IsDead &&
+                Vector2.Distance(transform.position, player.position) <= slamRadius)
+                playerHp.TakeDamage(1f, transform.position);
+        }
+
+        void SpawnRing()
+        {
+            if (ring != null) Destroy(ring);
+            ring = new GameObject("SB_SlamTelegraph");
+            ring.transform.SetParent(transform, false);
+            ring.transform.localPosition = Vector3.zero;
+            var rs = ring.AddComponent<SpriteRenderer>();
+            rs.sprite = SoftCircle();
+            rs.color = new Color(1f, 0.35f, 0.12f, 0.2f);
+            rs.sortingOrder = 8;
+            ring.transform.localScale = Vector3.one * 0.4f;
+        }
+
+        void SpawnShockwave(float radius)
+        {
+            var go = new GameObject("SB_Shockwave");
+            go.transform.position = transform.position;
+            var s = go.AddComponent<SpriteRenderer>();
+            s.sprite = SoftCircle();
+            s.color = new Color(1f, 0.55f, 0.2f, 0.7f);
+            s.sortingOrder = 30;
+            go.AddComponent<ShockwaveFx>().Init(radius * 2.2f, 0.35f);
+        }
+
+        static Sprite SoftCircle()
+        {
+            if (softCircle != null) return softCircle;
+            int sz = 64;
+            var tex = new Texture2D(sz, sz, TextureFormat.RGBA32, false);
+            tex.filterMode = FilterMode.Bilinear;
+            float c = (sz - 1) * 0.5f;
+            var px = new Color[sz * sz];
+            for (int y = 0; y < sz; y++)
+            for (int x = 0; x < sz; x++)
+            {
+                float d = Vector2.Distance(new Vector2(x, y), new Vector2(c, c)) / c;
+                float a = Mathf.Clamp01(1f - d);
+                px[y * sz + x] = new Color(1f, 1f, 1f, a * a);
+            }
+            tex.SetPixels(px);
+            tex.Apply(false, true);
+            softCircle = Sprite.Create(tex, new Rect(0, 0, sz, sz), new Vector2(0.5f, 0.5f), sz);
+            return softCircle;
         }
 
         void HandleDead()
         {
             if (dead) return;
             dead = true;
+            if (ring != null) { Destroy(ring); ring = null; }
             onDead?.Invoke();
+        }
+    }
+
+    /// <summary>Expanding, fading shockwave ring for boss slams and impacts.</summary>
+    public class ShockwaveFx : MonoBehaviour
+    {
+        float maxScale;
+        float life;
+        float t;
+        SpriteRenderer sr;
+
+        public void Init(float scale, float duration)
+        {
+            maxScale = scale;
+            life = duration;
+            sr = GetComponent<SpriteRenderer>();
+            transform.localScale = Vector3.one * 0.2f;
+        }
+
+        void Update()
+        {
+            t += Time.deltaTime;
+            float u = life > 0f ? Mathf.Clamp01(t / life) : 1f;
+            transform.localScale = Vector3.one * Mathf.Lerp(0.2f, maxScale, u);
+            if (sr != null)
+            {
+                var c = sr.color;
+                c.a = (1f - u) * 0.7f;
+                sr.color = c;
+            }
+            if (t >= life) Destroy(gameObject);
         }
     }
 }

@@ -24,6 +24,7 @@ namespace Emberwake
         Text hpLabel;
         Text objectiveLabel;
         Text toastLabel;
+        GameObject toastBgGo;
         GameObject hudRoot;
         GameObject controlsRoot;
         Transform canvasTransform;
@@ -127,7 +128,7 @@ namespace Emberwake
             if (toastLabel == null) return;
             toastLabel.text = msg ?? "";
             toastTimer = seconds;
-            toastLabel.gameObject.SetActive(!string.IsNullOrEmpty(msg));
+            if (toastBgGo != null) toastBgGo.SetActive(!string.IsNullOrEmpty(msg));
         }
 
         void Update()
@@ -138,7 +139,7 @@ namespace Emberwake
                 if (toastTimer <= 0f && toastLabel != null)
                 {
                     toastLabel.text = "";
-                    toastLabel.gameObject.SetActive(false);
+                    if (toastBgGo != null) toastBgGo.SetActive(false);
                 }
             }
             if (GameStarted) RefreshBars();
@@ -208,6 +209,22 @@ namespace Emberwake
             srt.anchoredPosition = new Vector2(0f, -topPad);
             srt.sizeDelta = new Vector2(-32f, 132f);
 
+            // Ember-gold frame behind the strip (matches dialog UI language).
+            var frame = new GameObject("StatusFrame", typeof(RectTransform), typeof(CanvasRenderer), typeof(Image));
+            frame.transform.SetParent(parent, false);
+            var frameImg = frame.GetComponent<Image>();
+            frameImg.sprite = UiArt.SoftPanel();
+            frameImg.type = Image.Type.Sliced;
+            frameImg.color = new Color(0.82f, 0.53f, 0.2f, 0.85f);
+            frameImg.raycastTarget = false;
+            var frt2 = frame.GetComponent<RectTransform>();
+            frt2.anchorMin = new Vector2(0f, 1f);
+            frt2.anchorMax = new Vector2(1f, 1f);
+            frt2.pivot = new Vector2(0.5f, 1f);
+            frt2.anchoredPosition = new Vector2(0f, -topPad + 4f);
+            frt2.sizeDelta = new Vector2(-24f, 140f);
+            frame.transform.SetSiblingIndex(strip.transform.GetSiblingIndex());
+
             // Hearts row
             var rowGo = new GameObject("HeartsRow", typeof(RectTransform));
             rowGo.transform.SetParent(strip.transform, false);
@@ -254,6 +271,14 @@ namespace Emberwake
             hfrt.offsetMin = new Vector2(3f, 3f);
             hfrt.offsetMax = new Vector2(-3f, -3f);
 
+            // Glossy sheen over the top half of the bar (drawn above the fill).
+            var hpGloss = CreateImage(hpBg.transform, "HpGloss", UiArt.WhiteQuad(),
+                new Vector2(0f, 0.52f), new Vector2(1f, 1f), Vector2.zero, Vector2.zero,
+                new Color(1f, 1f, 1f, 0.16f));
+            hpGloss.raycastTarget = false;
+            hpGloss.rectTransform.offsetMin = new Vector2(4f, 0f);
+            hpGloss.rectTransform.offsetMax = new Vector2(-4f, -3f);
+
             // Stamina bar — solid white quad fill (works with Image.Filled)
             var stamBg = CreateImage(strip.transform, "StamBg", UiArt.SoftPanel(),
                 new Vector2(0f, 0.04f), new Vector2(0.98f, 0.26f),
@@ -276,13 +301,22 @@ namespace Emberwake
             frt.offsetMin = new Vector2(3f, 3f);
             frt.offsetMax = new Vector2(-3f, -3f);
 
+            var stamGloss = CreateImage(stamBg.transform, "StamGloss", UiArt.WhiteQuad(),
+                new Vector2(0f, 0.52f), new Vector2(1f, 1f), Vector2.zero, Vector2.zero,
+                new Color(1f, 1f, 1f, 0.16f));
+            stamGloss.raycastTarget = false;
+            stamGloss.rectTransform.offsetMin = new Vector2(4f, 0f);
+            stamGloss.rectTransform.offsetMax = new Vector2(-4f, -3f);
+
             stamLabel = CreateAnchoredText(stamBg.transform, "StamTxt", "ST 50", 20,
                 TextAnchor.MiddleCenter, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f),
                 Vector2.zero, new Vector2(140f, 36f), Color.white);
 
             rankLabel = CreateAnchoredText(strip.transform, "Rank", "Lv1 · Wick 1", 22,
                 TextAnchor.MiddleRight, new Vector2(1f, 0.55f), new Vector2(1f, 0.55f),
-                new Vector2(-16f, 0f), new Vector2(340f, 48f), new Color(1f, 0.86f, 0.4f));
+                new Vector2(-16f, 0f), new Vector2(320f, 48f), new Color(1f, 0.86f, 0.4f));
+            // Grow leftward from the right edge so the label never clips off-screen.
+            rankLabel.rectTransform.pivot = new Vector2(1f, 0.5f);
             rankLabel.fontStyle = FontStyle.Bold;
         }
 
@@ -302,12 +336,23 @@ namespace Emberwake
 
             objectiveLabel = CreateAnchoredText(banner.transform, "Objective", "", 26,
                 TextAnchor.MiddleCenter, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f),
-                Vector2.zero, new Vector2(860f, 54f), new Color(1f, 0.93f, 0.68f));
+                Vector2.zero, new Vector2(860f, 54f), new Color(1f, 0.95f, 0.72f));
+            objectiveLabel.fontStyle = FontStyle.Bold;
+            objectiveLabel.gameObject.AddComponent<Outline>().effectColor = new Color(0f, 0f, 0f, 0.85f);
 
-            toastLabel = CreateAnchoredText(parent, "Toast", "", 24,
-                TextAnchor.MiddleCenter, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f),
-                new Vector2(0f, -(topPad + 160f)), new Vector2(900f, 54f), new Color(1f, 0.85f, 0.4f));
-            toastLabel.gameObject.SetActive(false);
+            // Toast sits on its own dark pill so secondary hints stay legible over the scene.
+            var toastBg = CreateImage(parent, "ToastBg", UiArt.SoftPanel(),
+                new Vector2(0.5f, 1f), new Vector2(0.5f, 1f),
+                new Vector2(0f, -(topPad + 160f)), new Vector2(920f, 56f),
+                new Color(0.1f, 0.07f, 0.05f, 0.82f));
+            toastBg.raycastTarget = false;
+            toastBg.transform.SetParent(parent, false);
+            toastLabel = CreateAnchoredText(toastBg.transform, "Toast", "", 24,
+                TextAnchor.MiddleCenter, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f),
+                Vector2.zero, new Vector2(880f, 54f), new Color(1f, 0.92f, 0.6f));
+            toastLabel.gameObject.AddComponent<Outline>().effectColor = new Color(0f, 0f, 0f, 0.85f);
+            toastBg.gameObject.SetActive(false);
+            toastBgGo = toastBg.gameObject;
         }
 
         void BuildJoystick(Transform parent)

@@ -32,6 +32,18 @@ namespace Emberwake
 
         public bool IsOpen => root != null && root.activeSelf;
 
+        /// <summary>Advance to the next line (used by tests / QA autopilot).</summary>
+        public void ForceAdvance() => tap = true;
+
+        /// <summary>Immediately close the dialog (QA screenshots).</summary>
+        public void ForceClose()
+        {
+            queue.Clear();
+            StopAllCoroutines();
+            if (root != null) root.SetActive(false);
+            onComplete = null;
+        }
+
         public void Build(Transform canvas)
         {
             Instance = this;
@@ -48,17 +60,42 @@ namespace Emberwake
             frame.color = Color.white;
             frame.raycastTarget = true;
 
+            // Warm frame behind the card (peeks out as a thin ember-gold border).
+            var borderGo = new GameObject("CardBorder", typeof(RectTransform), typeof(CanvasRenderer), typeof(Image));
+            borderGo.transform.SetParent(root.transform, false);
+            var border = borderGo.GetComponent<Image>();
+            border.sprite = UiArt.SoftPanel();
+            border.type = Image.Type.Sliced;
+            border.color = new Color(0.85f, 0.55f, 0.2f, 0.85f);
+            border.raycastTarget = false;
+            var bdr = border.rectTransform;
+            bdr.anchorMin = new Vector2(0.28f, 0.1f);
+            bdr.anchorMax = new Vector2(0.97f, 0.78f);
+            bdr.offsetMin = new Vector2(-5f, -5f);
+            bdr.offsetMax = new Vector2(5f, 5f);
+
             var cardGo = new GameObject("Card", typeof(RectTransform), typeof(CanvasRenderer), typeof(Image));
             cardGo.transform.SetParent(root.transform, false);
             var card = cardGo.GetComponent<Image>();
             card.sprite = UiArt.SoftPanel();
             card.type = Image.Type.Sliced;
-            card.color = new Color(0.08f, 0.06f, 0.12f, 0.92f);
+            card.color = new Color(0.08f, 0.06f, 0.12f, 0.94f);
             card.raycastTarget = false;
             var crt = card.rectTransform;
             crt.anchorMin = new Vector2(0.28f, 0.1f);
             crt.anchorMax = new Vector2(0.97f, 0.78f);
             crt.offsetMin = crt.offsetMax = Vector2.zero;
+
+            var portFrameGo = new GameObject("PortraitFrame", typeof(RectTransform), typeof(CanvasRenderer), typeof(Image));
+            portFrameGo.transform.SetParent(root.transform, false);
+            var portFrame = portFrameGo.GetComponent<Image>();
+            portFrame.sprite = UiArt.SoftPanel();
+            portFrame.type = Image.Type.Sliced;
+            portFrame.color = new Color(0.85f, 0.55f, 0.2f, 0.9f);
+            portFrame.raycastTarget = false;
+            var pfrt = portFrame.rectTransform;
+            pfrt.anchorMin = pfrt.anchorMax = new Vector2(0.16f, 0.42f);
+            pfrt.sizeDelta = new Vector2(272f, 272f);
 
             var portGo = new GameObject("Portrait", typeof(RectTransform), typeof(CanvasRenderer), typeof(Image));
             portGo.transform.SetParent(root.transform, false);
@@ -119,13 +156,29 @@ namespace Emberwake
             {
                 var line = queue.Dequeue();
                 speakerLabel.text = string.IsNullOrEmpty(line.Speaker) ? "…" : line.Speaker;
-                bodyLabel.text = line.Text ?? "";
                 if (portraitImage != null)
                 {
                     portraitImage.sprite = GeneratedArt.PortraitFor(line.Speaker);
                 }
+
+                // Typewriter reveal — tap once to reveal instantly, tap again to advance.
+                string full = line.Text ?? "";
+                bodyLabel.text = "";
                 tap = false;
-                yield return new WaitForSecondsRealtime(0.18f);
+                float revealed = 0f;
+                const float charsPerSecond = 42f;
+                while (revealed < full.Length)
+                {
+                    if (tap) { tap = false; break; }
+                    revealed += Time.unscaledDeltaTime * charsPerSecond;
+                    int shown = Mathf.Clamp(Mathf.FloorToInt(revealed), 0, full.Length);
+                    bodyLabel.text = full.Substring(0, shown);
+                    yield return null;
+                }
+                bodyLabel.text = full;
+
+                tap = false;
+                yield return new WaitForSecondsRealtime(0.12f);
                 tap = false;
                 while (!tap) yield return null;
             }

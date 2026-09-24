@@ -30,12 +30,55 @@ namespace Emberwake
 
         IEnumerator RunFlow()
         {
+            // Wait one frame so RuntimeInitializeOnLoad hooks (EmulatorAutoQa) have
+            // finished registering before we branch on QA mode. Otherwise the boot
+            // flow can win the AfterSceneLoad race and ignore the QA fast-path.
+            yield return null;
+            // QA: jump straight to a specific screen for visual verification.
+            foreach (var a in System.Environment.GetCommandLineArgs())
+            {
+                if (a == "-emberwakeMenu") { yield return MainMenu(); yield break; }
+                if (a == "-emberwakeSettings") { yield return MainMenu(); yield break; }
+                if (a == "-emberwakeAbout") { yield return MainMenu(); yield break; }
+                if (a == "-emberwakeCine") { yield return Cinematic(); yield break; }
+                if (a == "-emberwakeOnboard") { yield return Onboarding(); yield break; }
+            }
             if (EmulatorAutoQa.Enabled)
             {
-                // Fast path for visual QA on emulator
-                yield return Splash();
+                // Fast path for visual QA — skip splash/cinematic straight into gameplay.
                 ClearLayer();
                 onStartGame?.Invoke();
+                foreach (var a in System.Environment.GetCommandLineArgs())
+                {
+                    if (a == "-emberwakeHub")
+                    {
+                        DialogBox.Instance?.ForceClose();
+                        GameMenuHub.Instance?.Open();
+                    }
+                    else if (a == "-emberwakeBoss")
+                    {
+                        VerticalSliceDirector.Instance?.QaShowBoss();
+                    }
+                    else if (a == "-emberwakeClear")
+                    {
+                        VerticalSliceDirector.Instance?.QaShowClear();
+                    }
+                    else if (a.StartsWith("-emberwakeTab") && a.Length > 13)
+                    {
+                        string p = a.Substring(13).ToLowerInvariant();
+                        if (p == "quest") p = "quests";
+                        if (p == "bestiar") p = "bestiary";
+                        if (p == "karakter") p = "character";
+                        DialogBox.Instance?.ForceClose();
+                        GameMenuHub.Instance?.OpenTo(p);
+                    }
+                    else if (a.StartsWith("-emberwakeRoom") && a.Length > 14 &&
+                             int.TryParse(a.Substring(14), out int roomIdx))
+                    {
+                        DialogBox.Instance?.ForceClose();
+                        VerticalSliceDirector.Instance?.QaShowRoom(roomIdx);
+                    }
+                }
                 yield break;
             }
             yield return Splash();
@@ -113,6 +156,16 @@ namespace Emberwake
             srt.anchorMin = Vector2.zero;
             srt.anchorMax = new Vector2(1f, 0.46f);
             srt.offsetMin = srt.offsetMax = Vector2.zero;
+
+            // Cinematic letterbox bars for a filmic prolog.
+            var barTop = Panel(layer.transform, "LetterTop", Color.black, false);
+            barTop.rectTransform.anchorMin = new Vector2(0f, 0.93f);
+            barTop.rectTransform.anchorMax = new Vector2(1f, 1f);
+            barTop.rectTransform.offsetMin = barTop.rectTransform.offsetMax = Vector2.zero;
+            var barBot = Panel(layer.transform, "LetterBot", Color.black, false);
+            barBot.rectTransform.anchorMin = new Vector2(0f, 0f);
+            barBot.rectTransform.anchorMax = new Vector2(1f, 0.07f);
+            barBot.rectTransform.offsetMin = barBot.rectTransform.offsetMax = Vector2.zero;
 
             var kicker = Label(layer.transform, "Kicker", "PROLOG", 28,
                 new Vector2(0.5f, 0.93f), new Color(1f, 0.86f, 0.55f));
@@ -217,21 +270,70 @@ namespace Emberwake
             var veil = Panel(layer.transform, "Veil", new Color(0.02f, 0.03f, 0.05f, 0.55f), false);
             Stretch(veil.rectTransform);
 
-            Label(layer.transform, "Title", "CARA BERMAIN", 48,
-                new Vector2(0.5f, 0.86f), new Color(1f, 0.85f, 0.4f)).fontStyle = FontStyle.Bold;
+            // Framed card behind the tips for readability + structure.
+            var cardBorder = Panel(layer.transform, "CardBorder", new Color(0.82f, 0.53f, 0.2f, 0.85f), false);
+            var cbrt = cardBorder.rectTransform;
+            cbrt.anchorMin = new Vector2(0.1f, 0.28f);
+            cbrt.anchorMax = new Vector2(0.9f, 0.74f);
+            cbrt.offsetMin = cbrt.offsetMax = Vector2.zero;
+            var card = Panel(cardBorder.transform, "Card", new Color(0.06f, 0.05f, 0.09f, 0.9f), false);
+            var cardRt = card.rectTransform;
+            cardRt.anchorMin = Vector2.zero;
+            cardRt.anchorMax = Vector2.one;
+            cardRt.offsetMin = new Vector2(5f, 5f);
+            cardRt.offsetMax = new Vector2(-5f, -5f);
+
+            var title = Label(layer.transform, "Title", "CARA BERMAIN", 52,
+                new Vector2(0.5f, 0.82f), new Color(1f, 0.85f, 0.4f));
+            title.fontStyle = FontStyle.Bold;
+            title.gameObject.AddComponent<Outline>().effectColor = new Color(0.3f, 0.1f, 0f, 0.95f);
 
             string[] tips =
             {
-                "1  D-pad kiri — gerak Kael (8 arah)",
-                "2  ATK kanan atas — tebas musuh",
-                "3  SPIN kanan bawah — serangan putar",
-                "4  Ikuti misi kuning di atas layar",
-                "5  Ketuk dialog untuk lanjut cerita"
+                "D-pad kiri — gerak Kael (8 arah)",
+                "ATK kanan atas — tebas musuh",
+                "SPIN kanan bawah — serangan putar",
+                "Ikuti misi kuning di atas layar",
+                "Ketuk dialog untuk lanjut cerita"
             };
+            Image Chip(string nm, Sprite spr, Color col, float y, float size)
+            {
+                var img = Panel(layer.transform, nm, col, false);
+                img.sprite = spr;
+                img.type = Image.Type.Simple;
+                var rt = img.rectTransform;
+                rt.anchorMin = rt.anchorMax = new Vector2(0.165f, y);
+                rt.sizeDelta = new Vector2(size, size);
+                return img;
+            }
             for (int i = 0; i < tips.Length; i++)
             {
-                Label(layer.transform, "Tip" + i, tips[i], 30,
-                    new Vector2(0.5f, 0.72f - i * 0.08f), new Color(0.92f, 0.9f, 0.84f));
+                float y = 0.68f - i * 0.075f;
+                var tip = Label(layer.transform, "Tip" + i, tips[i], 30,
+                    new Vector2(0.24f, y), new Color(0.96f, 0.93f, 0.86f));
+                tip.alignment = TextAnchor.MiddleLeft;
+                tip.rectTransform.pivot = new Vector2(0f, 0.5f);
+                tip.rectTransform.sizeDelta = new Vector2(650f, 60f);
+                tip.gameObject.AddComponent<Outline>().effectColor = new Color(0f, 0f, 0f, 0.8f);
+
+                switch (i)
+                {
+                    case 0:
+                        Chip("IcDpad", UiArt.JoystickRing(), new Color(1f, 0.85f, 0.35f, 0.95f), y, 54f);
+                        break;
+                    case 1:
+                        Chip("IcAtk", UiArt.WhiteCircle(), new Color(0.9f, 0.26f, 0.2f, 0.97f), y, 46f);
+                        break;
+                    case 2:
+                        Chip("IcSpin", UiArt.WhiteCircle(), new Color(0.58f, 0.3f, 0.86f, 0.97f), y, 46f);
+                        break;
+                    case 3:
+                        Chip("IcObj", UiArt.WhiteCircle(), new Color(1f, 0.82f, 0.32f, 0.97f), y, 34f);
+                        break;
+                    default:
+                        Chip("IcTalk", UiArt.SoftPanel(), new Color(0.95f, 0.92f, 0.84f, 0.95f), y, 44f).type = Image.Type.Sliced;
+                        break;
+                }
             }
 
             bool done = false;
@@ -274,14 +376,30 @@ namespace Emberwake
             ms.anchorMax = new Vector2(1f, 0.72f);
             ms.offsetMin = ms.offsetMax = Vector2.zero;
 
-            // Brand hero
-            var brand = Label(layer.transform, "Brand", "EMBERWAKE", 86,
-                new Vector2(0.5f, 0.72f), new Color(1f, 0.8f, 0.32f));
-            brand.fontStyle = FontStyle.Bold;
-            brand.rectTransform.sizeDelta = new Vector2(980f, 140f);
+            // Warm glow halo behind the title.
+            var brandGlow = new GameObject("BrandGlow", typeof(RectTransform), typeof(CanvasRenderer), typeof(Image));
+            brandGlow.transform.SetParent(layer.transform, false);
+            var bgi = brandGlow.GetComponent<Image>();
+            bgi.sprite = UiArt.WhiteCircle();
+            bgi.color = new Color(1f, 0.55f, 0.18f, 0.28f);
+            bgi.raycastTarget = false;
+            var bgrt = bgi.rectTransform;
+            bgrt.anchorMin = bgrt.anchorMax = new Vector2(0.5f, 0.72f);
+            bgrt.sizeDelta = new Vector2(900f, 420f);
 
-            Label(layer.transform, "Tag", "Ketika lentera terakhir padam,\ndunia lupa namanya sendiri.", 26,
-                new Vector2(0.5f, 0.62f), new Color(0.9f, 0.88f, 0.8f));
+            // Brand hero
+            var brand = Label(layer.transform, "Brand", "EMBERWAKE", 92,
+                new Vector2(0.5f, 0.72f), new Color(1f, 0.82f, 0.34f));
+            brand.fontStyle = FontStyle.Bold;
+            brand.rectTransform.sizeDelta = new Vector2(980f, 150f);
+            brand.gameObject.AddComponent<Outline>().effectColor = new Color(0.35f, 0.12f, 0f, 0.95f);
+            var brandShadow = brand.gameObject.AddComponent<Shadow>();
+            brandShadow.effectColor = new Color(0f, 0f, 0f, 0.7f);
+            brandShadow.effectDistance = new Vector2(3f, -4f);
+
+            var tag = Label(layer.transform, "Tag", "Ketika lentera terakhir padam,\ndunia lupa namanya sendiri.", 26,
+                new Vector2(0.5f, 0.62f), new Color(0.95f, 0.92f, 0.84f));
+            tag.gameObject.AddComponent<Outline>().effectColor = new Color(0f, 0f, 0f, 0.85f);
 
             string page = "home";
             bool play = false;
@@ -310,9 +428,51 @@ namespace Emberwake
             var shareBtn = SmallBtn(layer.transform, "Share", "BAGIKAN", new Vector2(0.62f, rowY));
             var rateBtn = SmallBtn(layer.transform, "Rate", "NILAI", new Vector2(0.82f, rowY));
 
+            // Visible Music/SFX controls, shown only on the settings page (replaces the
+            // old invisible tap-zones with real +/- buttons and live percentage readouts).
+            var setControls = new System.Collections.Generic.List<GameObject>();
+            Text musicVal = null, sfxVal = null;
+            void RefreshSettings()
+            {
+                if (musicVal != null) musicVal.text = Mathf.RoundToInt(GameSettings.MusicVolume * 100f) + "%";
+                if (sfxVal != null) sfxVal.text = Mathf.RoundToInt(GameSettings.SfxVolume * 100f) + "%";
+            }
+            void SetControlsVisible(bool v)
+            {
+                foreach (var g in setControls) if (g != null) g.SetActive(v);
+            }
+            Image AdjBtn(string nm, string glyph, Vector2 anchor, System.Action onTap)
+            {
+                var b = FramedButton(layer.transform, nm,
+                    new Color(0.16f, 0.18f, 0.24f, 1f), new Color(0.9f, 0.7f, 0.35f, 0.95f));
+                b.rectTransform.anchorMin = b.rectTransform.anchorMax = anchor;
+                b.rectTransform.sizeDelta = new Vector2(76f, 76f);
+                Label(b.transform, nm + "T", glyph, 40, new Vector2(0.5f, 0.5f), Color.white).fontStyle = FontStyle.Bold;
+                AddTap(b.gameObject, () => { AudioDirector.Instance?.PlayUi(); onTap(); RefreshSettings(); });
+                setControls.Add(b.gameObject);
+                return b;
+            }
+            Text SetLabel(string nm, string content, Vector2 anchor, int size, Color col)
+            {
+                var l = Label(layer.transform, nm, content, size, anchor, col);
+                setControls.Add(l.gameObject);
+                return l;
+            }
+            SetLabel("SetTitle", "SETTING", new Vector2(0.5f, 0.585f), 34, new Color(1f, 0.82f, 0.34f)).fontStyle = FontStyle.Bold;
+            SetLabel("MLabel", "MUSIK", new Vector2(0.28f, 0.50f), 26, new Color(0.95f, 0.92f, 0.84f));
+            AdjBtn("MDown", "-", new Vector2(0.5f, 0.50f), () => GameSettings.MusicVolume = Mathf.Clamp01(GameSettings.MusicVolume - 0.1f));
+            musicVal = SetLabel("MVal", "", new Vector2(0.62f, 0.50f), 28, new Color(1f, 0.85f, 0.4f));
+            AdjBtn("MUp", "+", new Vector2(0.74f, 0.50f), () => GameSettings.MusicVolume = Mathf.Clamp01(GameSettings.MusicVolume + 0.1f));
+            SetLabel("SLabel", "SFX", new Vector2(0.28f, 0.42f), 26, new Color(0.95f, 0.92f, 0.84f));
+            AdjBtn("SDown", "-", new Vector2(0.5f, 0.42f), () => GameSettings.SfxVolume = Mathf.Clamp01(GameSettings.SfxVolume - 0.1f));
+            sfxVal = SetLabel("SVal", "", new Vector2(0.62f, 0.42f), 28, new Color(1f, 0.85f, 0.4f));
+            AdjBtn("SUp", "+", new Vector2(0.74f, 0.42f), () => GameSettings.SfxVolume = Mathf.Clamp01(GameSettings.SfxVolume + 0.1f));
+            SetControlsVisible(false);
+
             void ShowHome()
             {
                 page = "home";
+                SetControlsVisible(false);
                 body.text = "Quest: Wick Hollowroot → Gloves → Barkling → Altar\n\nNew Game mulai dari Millbrook.\nLanjutkan memuat save terakhir.";
                 playTxt.text = "GAME BARU";
                 playBtn.gameObject.SetActive(true);
@@ -345,24 +505,34 @@ namespace Emberwake
                     PortraitMobileHud.Instance?.ShowToast("Belum ada save — mulai baru");
                 }
             });
+            void OpenSettings()
+            {
+                page = "settings";
+                contBtn.gameObject.SetActive(false);
+                playBtn.gameObject.SetActive(true);
+                playTxt.text = "KEMBALI";
+                body.text = "";
+                SetControlsVisible(true);
+                RefreshSettings();
+            }
             AddTap(setBtn.gameObject, () =>
             {
                 AudioDirector.Instance?.PlayUi();
-                page = "settings";
-                playBtn.gameObject.SetActive(false);
-                contBtn.gameObject.SetActive(false);
-                body.text = SettingsText();
-                playBtn.gameObject.SetActive(true);
-                playTxt.text = "KEMBALI";
+                OpenSettings();
             });
-            AddTap(aboutBtn.gameObject, () =>
+            void OpenAbout()
             {
-                AudioDirector.Instance?.PlayUi();
                 page = "about";
+                SetControlsVisible(false);
                 contBtn.gameObject.SetActive(false);
                 playBtn.gameObject.SetActive(true);
                 playTxt.text = "KEMBALI";
                 body.text = "EMBERWAKE\nEmberwake Studio · v0.2\n\nAction RPG portrait.\nKael menjaga Wick terakhir Virelia.\n\nMillbrook → Hollowroot → Altar.";
+            }
+            AddTap(aboutBtn.gameObject, () =>
+            {
+                AudioDirector.Instance?.PlayUi();
+                OpenAbout();
             });
             AddTap(shareBtn.gameObject, () =>
             {
@@ -375,54 +545,12 @@ namespace Emberwake
                 GameSettings.RateOnStore();
             });
 
-            // Settings adjust while settings page open
-            var hitL = Panel(layer.transform, "HitL", new Color(0, 0, 0, 0.01f), true);
-            hitL.rectTransform.anchorMin = new Vector2(0f, 0.4f);
-            hitL.rectTransform.anchorMax = new Vector2(0.5f, 0.58f);
-            hitL.rectTransform.offsetMin = hitL.rectTransform.offsetMax = Vector2.zero;
-            var hitR = Panel(layer.transform, "HitR", new Color(0, 0, 0, 0.01f), true);
-            hitR.rectTransform.anchorMin = new Vector2(0.5f, 0.4f);
-            hitR.rectTransform.anchorMax = new Vector2(1f, 0.58f);
-            hitR.rectTransform.offsetMin = hitR.rectTransform.offsetMax = Vector2.zero;
-            AddTap(hitL.gameObject, () =>
-            {
-                if (page != "settings") return;
-                GameSettings.MusicVolume = Mathf.Clamp01(GameSettings.MusicVolume - 0.1f);
-                body.text = SettingsText();
-            });
-            AddTap(hitR.gameObject, () =>
-            {
-                if (page != "settings") return;
-                GameSettings.MusicVolume = Mathf.Clamp01(GameSettings.MusicVolume + 0.1f);
-                body.text = SettingsText();
-            });
-            var hitU = Panel(layer.transform, "HitU", new Color(0, 0, 0, 0.01f), true);
-            hitU.rectTransform.anchorMin = new Vector2(0.15f, 0.58f);
-            hitU.rectTransform.anchorMax = new Vector2(0.85f, 0.7f);
-            hitU.rectTransform.offsetMin = hitU.rectTransform.offsetMax = Vector2.zero;
-            var hitD = Panel(layer.transform, "HitD", new Color(0, 0, 0, 0.01f), true);
-            hitD.rectTransform.anchorMin = new Vector2(0.15f, 0.38f);
-            hitD.rectTransform.anchorMax = new Vector2(0.85f, 0.5f);
-            hitD.rectTransform.offsetMin = hitD.rectTransform.offsetMax = Vector2.zero;
-            AddTap(hitU.gameObject, () =>
-            {
-                if (page != "settings") return;
-                GameSettings.SfxVolume = Mathf.Clamp01(GameSettings.SfxVolume + 0.1f);
-                body.text = SettingsText();
-            });
-            AddTap(hitD.gameObject, () =>
-            {
-                if (page != "settings") return;
-                GameSettings.SfxVolume = Mathf.Clamp01(GameSettings.SfxVolume - 0.1f);
-                body.text = SettingsText();
-            });
-
-            string SettingsText() =>
-                "SETTING\n\nMusik  " + Mathf.RoundToInt(GameSettings.MusicVolume * 100) +
-                "%\nSFX    " + Mathf.RoundToInt(GameSettings.SfxVolume * 100) +
-                "%\n\nKiri / kanan = musik\nAtas / bawah = SFX";
-
             ShowHome();
+            foreach (var a in System.Environment.GetCommandLineArgs())
+            {
+                if (a == "-emberwakeSettings") OpenSettings();
+                else if (a == "-emberwakeAbout") OpenAbout();
+            }
 
             var guideBtn = FramedButton(layer.transform, "Guide",
                 new Color(0.14f, 0.16f, 0.22f, 1f), new Color(0.55f, 0.55f, 0.5f, 0.9f));

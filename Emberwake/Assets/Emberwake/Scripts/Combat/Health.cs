@@ -80,6 +80,9 @@ namespace Emberwake
             }
 
             DamagePopup.Spawn(transform.position, usePlayerHearts ? Mathf.Max(1f, amount) : amount, amount >= 1.4f);
+            CombatVfx.Spark(transform.position,
+                usePlayerHearts ? new Color(1f, 0.4f, 0.4f) : new Color(1f, 0.92f, 0.55f),
+                amount >= 1.4f ? 1.35f : 1f);
             FeelFeedback.HitStop(usePlayerHearts ? 0.06f : 0.035f);
 
             if (rb != null && rb.simulated)
@@ -100,6 +103,8 @@ namespace Emberwake
             {
                 if (GameManager.Instance != null && GameManager.Instance.WickRank != null)
                     GameManager.Instance.WickRank.AddEssence(8);
+                CombatVfx.Burst(transform.position, new Color(1f, 0.8f, 0.4f));
+                FeelFeedback.Shake(0.14f, 0.12f);
                 Destroy(gameObject, 0.05f);
             }
         }

@@ -2,18 +2,28 @@ using UnityEngine;
 
 namespace Emberwake
 {
-    /// <summary>Emulator/dev helper: skip boot after splash, auto-tap dialogs, dump markers.</summary>
+    /// <summary>
+    /// Emulator/dev/QA autopilot: skips boot, auto-advances dialogs, and drives Kael
+    /// (walk + attack) so headless visual QA can traverse and fight through the slice.
+    /// Only ever active on emulator / editor / when launched with -emberwakeQa.
+    /// </summary>
     public class EmulatorAutoQa : MonoBehaviour
     {
         public static bool Enabled { get; private set; }
 
-        float t;
-        int phase;
+        /// <summary>QA-only: skip cosmetic scatter/glows so the headless software
+        /// renderer can produce many frames (for verifying controls/combat/rooms).</summary>
+        public static bool Lite { get; private set; }
+
+        float dialogTapTimer;
+        float attackTimer;
+        float spinTimer;
+        float wiggleTimer;
+        Vector2 moveDir = Vector2.up;
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
         static void Boot()
         {
-            // Enable on emulator / editor / -qa flag
             bool emu = SystemInfo.deviceModel.ToLowerInvariant().Contains("sdk")
                        || SystemInfo.deviceName.ToLowerInvariant().Contains("emulator")
                        || Application.isEditor
@@ -21,6 +31,7 @@ namespace Emberwake
                        || HasArg("-emberwakeQa");
             if (!emu) return;
             Enabled = true;
+            Lite = HasArg("-emberwakeLite");
             var go = new GameObject("EmulatorAutoQa");
             DontDestroyOnLoad(go);
             go.AddComponent<EmulatorAutoQa>();
@@ -35,49 +46,69 @@ namespace Emberwake
             return false;
         }
 
+        static bool HasRoomArg()
+        {
+            foreach (var a in System.Environment.GetCommandLineArgs())
+                if (a.StartsWith("-emberwakeRoom")) return true;
+            return false;
+        }
+
+        static bool HasArgPrefix(string prefix)
+        {
+            foreach (var a in System.Environment.GetCommandLineArgs())
+                if (a.StartsWith(prefix)) return true;
+            return false;
+        }
+
         void Update()
         {
             if (!Enabled) return;
-            t += Time.unscaledDeltaTime;
+            float dt = Time.unscaledDeltaTime;
+            // Static screenshot hooks position the scene themselves — stay idle so the
+            // autopilot never teleports Kael (huge dt on the software renderer) or leaks
+            // enemies across rooms.
+            if (HasArg("-emberwakeHub") || HasArg("-emberwakeBoss")
+                || HasArg("-emberwakeClear") || HasRoomArg() || HasArgPrefix("-emberwakeTab")) return;
 
-            // Auto-advance dialogs
-            if (DialogBox.Instance != null && DialogBox.Instance.IsOpen && t > 0.35f)
+            // 1) Auto-advance any open dialog.
+            if (DialogBox.Instance != null && DialogBox.Instance.IsOpen)
             {
-                // Simulate tap via reflection of public flow — tap flag private; use SendMessage / click
-                SimulateDialogTap();
-                t = 0f;
+                dialogTapTimer += dt;
+                if (dialogTapTimer > 0.5f)
+                {
+                    DialogBox.Instance.ForceAdvance();
+                    dialogTapTimer = 0f;
+                }
+                return;
             }
+            dialogTapTimer = 0f;
 
-            // Open menu briefly for screenshot phase
-            if (phase == 0 && PortraitMobileHud.Instance != null && PortraitMobileHud.Instance.GameStarted && t > 1.2f)
-            {
-                phase = 1;
-                t = 0f;
-                Debug.Log("[EmberwakeQA] gameplay_ready");
-            }
-            if (phase == 1 && t > 2f)
-            {
-                GameMenuHub.Instance?.Open();
-                phase = 2;
-                t = 0f;
-                Debug.Log("[EmberwakeQA] menu_open");
-            }
-            if (phase == 2 && t > 2f)
-            {
-                GameMenuHub.Instance?.Close();
-                phase = 3;
-                Debug.Log("[EmberwakeQA] menu_closed");
-            }
-        }
+            // 2) Once the HUD reports gameplay, drive Kael: walk (mostly north) + attack.
+            var hud = PortraitMobileHud.Instance;
+            if (hud == null || !hud.GameStarted) return;
 
-        void SimulateDialogTap()
-        {
-            // Dialog advances on PointerDown; inject via EventSystem if possible
-            if (UnityEngine.EventSystems.EventSystem.current == null) return;
-            var go = DialogBox.Instance != null ? GameObject.Find("DialogBox") : null;
-            if (go == null) return;
-            var ped = new UnityEngine.EventSystems.PointerEventData(UnityEngine.EventSystems.EventSystem.current);
-            UnityEngine.EventSystems.ExecuteEvents.Execute(go, ped, UnityEngine.EventSystems.ExecuteEvents.pointerDownHandler);
+            // Headless software rendering is ~1 fps; since this autopilot acts once per
+            // rendered frame, speed up game-time so QA can traverse the whole slice.
+            Time.timeScale = 3f;
+
+            // Snake slightly left/right so we brush enemies and props while heading north.
+            wiggleTimer += dt;
+            float wobble = Mathf.Sin(wiggleTimer * 1.3f) * 0.55f;
+            moveDir = new Vector2(wobble, 1f).normalized;
+            GameInput.SetMobileMove(moveDir);
+
+            attackTimer += dt;
+            if (attackTimer > 0.55f)
+            {
+                GameInput.PressAttack();
+                attackTimer = 0f;
+            }
+            spinTimer += dt;
+            if (spinTimer > 2.6f)
+            {
+                GameInput.PressSpin();
+                spinTimer = 0f;
+            }
         }
     }
 }

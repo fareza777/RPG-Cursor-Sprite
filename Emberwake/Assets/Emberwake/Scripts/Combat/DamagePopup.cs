@@ -10,6 +10,9 @@ namespace Emberwake
         Text label;
         float life = 0.7f;
         Vector3 velocity;
+        Transform canvasT;
+        float baseScale = 0.018f;
+        float punch;
 
         public static void Spawn(Vector3 worldPos, float amount, bool crit = false)
         {
@@ -29,7 +32,10 @@ namespace Emberwake
             canvas.sortingOrder = 120;
             var rt = canvasGo.GetComponent<RectTransform>();
             rt.sizeDelta = new Vector2(160f, 48f);
-            canvasGo.transform.localScale = Vector3.one * 0.018f;
+            canvasT = canvasGo.transform;
+            baseScale = crit ? 0.024f : 0.018f;
+            punch = crit ? 1.7f : 1.35f;
+            canvasT.localScale = Vector3.one * (baseScale * punch);
 
             var textGo = new GameObject("T", typeof(RectTransform), typeof(CanvasRenderer), typeof(Text));
             textGo.transform.SetParent(canvasGo.transform, false);
@@ -42,6 +48,7 @@ namespace Emberwake
             label.alignment = TextAnchor.MiddleCenter;
             label.fontStyle = FontStyle.Bold;
             label.text = Mathf.CeilToInt(amount).ToString();
+            textGo.AddComponent<Outline>().effectColor = new Color(0f, 0f, 0f, 0.9f);
             velocity = new Vector3(Random.Range(-0.4f, 0.4f), 1.6f, 0f);
         }
 
@@ -50,6 +57,11 @@ namespace Emberwake
             life -= Time.deltaTime;
             transform.position += velocity * Time.deltaTime;
             velocity.y -= 2.2f * Time.deltaTime;
+            if (canvasT != null && punch > 1f)
+            {
+                punch = Mathf.MoveTowards(punch, 1f, Time.deltaTime * 4.5f);
+                canvasT.localScale = Vector3.one * (baseScale * punch);
+            }
             if (label != null)
             {
                 var c = label.color;
