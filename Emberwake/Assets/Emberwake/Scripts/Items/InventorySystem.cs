@@ -25,6 +25,10 @@ namespace Emberwake
         public int BowTier => bowTier;
         public int ShieldTier => shieldTier;
         public int LanternTier => lanternTier;
+        public int HeartDrops => heartDrops;
+        public int WickOil => wickOil;
+        public int AshSalt => ashSalt;
+        public IReadOnlyList<KeyItemId> KeyItems => keyItems;
 
         public event Action OnChanged;
 

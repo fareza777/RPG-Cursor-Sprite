@@ -24,6 +24,7 @@ namespace Emberwake
         Text hpLabel;
         Text objectiveLabel;
         Text toastLabel;
+        GameObject toastBgGo;
         GameObject hudRoot;
         GameObject controlsRoot;
         Transform canvasTransform;
@@ -127,7 +128,7 @@ namespace Emberwake
             if (toastLabel == null) return;
             toastLabel.text = msg ?? "";
             toastTimer = seconds;
-            toastLabel.gameObject.SetActive(!string.IsNullOrEmpty(msg));
+            if (toastBgGo != null) toastBgGo.SetActive(!string.IsNullOrEmpty(msg));
         }
 
         void Update()
@@ -138,7 +139,7 @@ namespace Emberwake
                 if (toastTimer <= 0f && toastLabel != null)
                 {
                     toastLabel.text = "";
-                    toastLabel.gameObject.SetActive(false);
+                    if (toastBgGo != null) toastBgGo.SetActive(false);
                 }
             }
             if (GameStarted) RefreshBars();
@@ -335,12 +336,23 @@ namespace Emberwake
 
             objectiveLabel = CreateAnchoredText(banner.transform, "Objective", "", 26,
                 TextAnchor.MiddleCenter, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f),
-                Vector2.zero, new Vector2(860f, 54f), new Color(1f, 0.93f, 0.68f));
+                Vector2.zero, new Vector2(860f, 54f), new Color(1f, 0.95f, 0.72f));
+            objectiveLabel.fontStyle = FontStyle.Bold;
+            objectiveLabel.gameObject.AddComponent<Outline>().effectColor = new Color(0f, 0f, 0f, 0.85f);
 
-            toastLabel = CreateAnchoredText(parent, "Toast", "", 24,
-                TextAnchor.MiddleCenter, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f),
-                new Vector2(0f, -(topPad + 160f)), new Vector2(900f, 54f), new Color(1f, 0.85f, 0.4f));
-            toastLabel.gameObject.SetActive(false);
+            // Toast sits on its own dark pill so secondary hints stay legible over the scene.
+            var toastBg = CreateImage(parent, "ToastBg", UiArt.SoftPanel(),
+                new Vector2(0.5f, 1f), new Vector2(0.5f, 1f),
+                new Vector2(0f, -(topPad + 160f)), new Vector2(920f, 56f),
+                new Color(0.1f, 0.07f, 0.05f, 0.82f));
+            toastBg.raycastTarget = false;
+            toastBg.transform.SetParent(parent, false);
+            toastLabel = CreateAnchoredText(toastBg.transform, "Toast", "", 24,
+                TextAnchor.MiddleCenter, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f),
+                Vector2.zero, new Vector2(880f, 54f), new Color(1f, 0.92f, 0.6f));
+            toastLabel.gameObject.AddComponent<Outline>().effectColor = new Color(0f, 0f, 0f, 0.85f);
+            toastBg.gameObject.SetActive(false);
+            toastBgGo = toastBg.gameObject;
         }
 
         void BuildJoystick(Transform parent)

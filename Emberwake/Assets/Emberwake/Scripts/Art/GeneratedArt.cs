@@ -92,6 +92,26 @@ namespace Emberwake
             if (Mathf.Abs(ny) < 0.07f && nx < 0.2f) return new Color(0.96f, 0.8f, 0.34f); // title band
             return new Color(0.62f, 0.2f, 0.17f);                             // cover
         });
+        public static Sprite IconPouch() => Glyph("i_pouch", (nx, ny) =>
+        {
+            // Drawstring belt pouch: rounded bag body, a cinched neck, and a flap.
+            Color leather = new Color(0.62f, 0.4f, 0.2f);
+            Color dark = new Color(0.42f, 0.26f, 0.12f);
+            Color tie = new Color(0.85f, 0.68f, 0.3f);
+            float bodyR = (nx * nx) / 0.36f + ((ny + 0.15f) * (ny + 0.15f)) / 0.42f;
+            bool body = bodyR < 1f && ny < 0.35f;
+            bool neck = Mathf.Abs(nx) < 0.24f && ny > 0.25f && ny < 0.5f;
+            bool tieBand = Mathf.Abs(ny - 0.3f) < 0.07f && Mathf.Abs(nx) < 0.3f;
+            if (tieBand) return tie;
+            if (neck) return dark;
+            if (body)
+            {
+                if (ny < -0.35f) return dark;                 // bottom shadow
+                if (nx < -0.1f && ny > -0.1f) return Color.Lerp(leather, Color.white, 0.15f); // sheen
+                return leather;
+            }
+            return Color.clear;
+        });
         public static Sprite IconSave() => Glyph("i_save", (nx, ny) =>
         {
             bool body = Mathf.Abs(nx) < 0.45f && Mathf.Abs(ny) < 0.45f;

@@ -85,10 +85,11 @@ namespace Emberwake
             xpBarLabel.fontStyle = FontStyle.Bold;
 
             float y = 0.08f;
-            MakeNav(panel.transform, "Karakter", GeneratedArt.IconSword(), () => ShowPage("character"), new Vector2(0.18f, y));
-            MakeNav(panel.transform, "Level", GeneratedArt.IconStar(), () => ShowPage("level"), new Vector2(0.38f, y));
-            MakeNav(panel.transform, "Quest", GeneratedArt.IconQuest(), () => ShowPage("quests"), new Vector2(0.58f, y));
-            MakeNav(panel.transform, "Bestiar", GeneratedArt.IconBook(), () => ShowPage("bestiary"), new Vector2(0.78f, y));
+            MakeNav(panel.transform, "Karakter", GeneratedArt.IconSword(), () => ShowPage("character"), new Vector2(0.12f, y));
+            MakeNav(panel.transform, "Barang", GeneratedArt.IconPouch(), () => ShowPage("items"), new Vector2(0.31f, y));
+            MakeNav(panel.transform, "Level", GeneratedArt.IconStar(), () => ShowPage("level"), new Vector2(0.5f, y));
+            MakeNav(panel.transform, "Quest", GeneratedArt.IconQuest(), () => ShowPage("quests"), new Vector2(0.69f, y));
+            MakeNav(panel.transform, "Bestiar", GeneratedArt.IconBook(), () => ShowPage("bestiary"), new Vector2(0.88f, y));
 
             var saveBtn = MakeButton(panel.transform, "SaveBtn", "SAVE", GeneratedArt.SoftButton(),
                 new Vector2(0.28f, 0.02f), new Vector2(220f, 70f), () => ShowPage("save"));
@@ -179,6 +180,11 @@ namespace Emberwake
                     iconImage.sprite = GeneratedArt.PortraitKael();
                     bodyLabel.text = CharacterText();
                     break;
+                case "items":
+                    titleLabel.text = "BARANG";
+                    iconImage.sprite = GeneratedArt.IconPouch();
+                    bodyLabel.text = ItemsText();
+                    break;
                 case "level":
                     titleLabel.text = "LEVELING";
                     iconImage.sprite = GeneratedArt.IconStar();
@@ -229,6 +235,7 @@ namespace Emberwake
                    "• Karakter — status & kisah Kael\n" +
                    "• Level — XP & Wick rank\n" +
                    "• Quest — misi utama & sampingan\n" +
+                   "• Barang — item, emas & equipment\n" +
                    "• Bestiar — musuh yang terungkap\n" +
                    "• Save — simpan perjalanan\n\n" +
                    "Wick menunggu. Jangan biarkan padam.";
@@ -247,6 +254,47 @@ namespace Emberwake
                    $"Wick Rank   {w?.Rank ?? 1}\n" +
                    $"Essence     {w?.Essence ?? 0}\n\n" +
                    "\"Aku tidak ingat tujuh tahun itu.\nHanya nyala Wick yang mengenaliku.\"";
+        }
+
+        static string KeyItemName(KeyItemId id) => id switch
+        {
+            KeyItemId.GlovesOfLift => "Gloves of Lift",
+            KeyItemId.TideBow => "Tide Bow",
+            KeyItemId.MirageShield => "Mirage Shield",
+            KeyItemId.Ashbrand => "Ashbrand",
+            KeyItemId.EchoLantern => "Echo Lantern",
+            KeyItemId.KingsSigil => "King's Sigil",
+            KeyItemId.Heartwick => "Heartwick",
+            _ => "—"
+        };
+
+        static readonly KeyItemId[] KeyItemOrder =
+        {
+            KeyItemId.GlovesOfLift, KeyItemId.TideBow, KeyItemId.MirageShield,
+            KeyItemId.Ashbrand, KeyItemId.EchoLantern, KeyItemId.KingsSigil, KeyItemId.Heartwick
+        };
+
+        static string ItemsText()
+        {
+            var inv = GameManager.Instance?.Inventory;
+            if (inv == null) return "Inventaris belum siap.";
+            var sb = new StringBuilder();
+            sb.AppendLine("══ EQUIPMENT ══");
+            sb.AppendLine($"Pedang     Tier {inv.SwordTier}");
+            sb.AppendLine($"Busur      Tier {inv.BowTier}");
+            sb.AppendLine($"Perisai    Tier {inv.ShieldTier}");
+            sb.AppendLine($"Lentera    Tier {inv.LanternTier}");
+            sb.AppendLine();
+            sb.AppendLine("══ KANTONG ══");
+            sb.AppendLine($"Emas          {inv.Gold}");
+            sb.AppendLine($"Heart Drop    {inv.HeartDrops}");
+            sb.AppendLine($"Wick Oil      {inv.WickOil}");
+            sb.AppendLine($"Ash Salt      {inv.AshSalt}");
+            sb.AppendLine();
+            sb.AppendLine("══ KEY ITEM ══");
+            foreach (var id in KeyItemOrder)
+                sb.AppendLine(inv.HasKeyItem(id) ? $"✓ {KeyItemName(id)}" : "• ??? (belum ditemukan)");
+            return sb.ToString();
         }
 
         static string LevelText()
